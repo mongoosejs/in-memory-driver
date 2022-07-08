@@ -2,8 +2,9 @@
 
 const Cursor = require('./cursor');
 const MongooseCollection = require('mongoose/lib/collection');
-const { ObjectId } = require('bson');
+const applyUpdate = require('./mongodb/applyUpdate');
 const sift = require('sift').default;
+const toBSON = require('./mongodb/toBSON');
 
 module.exports = class Collection extends MongooseCollection {
   constructor(name, conn, options) {
@@ -17,16 +18,16 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   get collection() {
-    return this.conn.db.collection(this.name);
+    return this;
   }
 
   insertOne(doc, options, cb) {
-    this._documents.push(doc);
+    this._documents.push(toBSON(doc));
     cb(null);
   }
 
   insertMany(docs, options, cb) {
-    this._documents = this._documents.concat(docs);
+    this._documents = this._documents.concat(docs.map(toBSON));
 
     return cb(null);
   }
@@ -56,7 +57,9 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    return cb(null, doc);
+    if (cb != null) {
+      cb(null, doc);
+    }
   }
 
   deleteMany(query, options, cb) {
@@ -74,6 +77,49 @@ module.exports = class Collection extends MongooseCollection {
 
     this._documents = newDocs;
     return cb(null, result);
+  }
+
+  findOneAndUpdate(query, update, options, cb) {
+    let doc = this._documents.find(sift(query));
+    const result = { value: null };
+
+    if (doc != null) {
+      result.value = doc;
+      applyUpdate(doc, update);
+    } else if (options && options.upsert) {
+      doc = { ...query };
+      applyUpdate(doc, update);
+      this._documents.push(doc);
+      result.value = doc;
+    }
+
+    if (cb != null) {
+      return cb(null, result);
+    }
+  }
+
+  updateOne(query, update, options, cb) {
+    const doc = this._documents.find(sift(query));
+
+    let result = { matchedCount: 0, modifiedCount: 0 };
+
+    if (doc != null) {
+      applyUpdate(doc, update);
+      result.matchedCount = 1;
+      result.modifiedCount = 1;
+    }
+
+    if (cb != null) {
+      return cb(null, result);
+    }
+  }
+
+  createIndex(index, options, cb) {
+    if (cb != null) {
+      return cb(null, index);
+    }
+
+    return;
   }
 }
 

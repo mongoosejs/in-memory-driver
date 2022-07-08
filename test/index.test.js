@@ -50,4 +50,55 @@ describe('in-memory driver', function() {
     doc = await Test.findOne({ name: 'test2' });
     assert.equal(doc.name, 'test2');
   });
+
+  it('updateOne', async function() {
+    const Test = mongoose.model('Test', mongoose.Schema({
+      name: String,
+      tags: [String]
+    }));
+
+    const { _id } = await Test.create({ name: 'test', tags: [] });
+
+    await Test.updateOne({ _id }, { $set: { name: 'test2' } });
+
+    let doc = await Test.findOne({ name: 'test2' });
+    assert.equal(doc.name, 'test2');
+
+    await Test.updateOne({ _id }, { $push: { tags: 'mongodb' } });
+
+    doc = await Test.findOne({ name: 'test2' });
+    assert.deepEqual(doc.tags, ['mongodb']);
+
+    await Test.updateOne({ _id }, { $addToSet: { tags: 'mongodb' } });
+
+    doc = await Test.findOne({ name: 'test2' });
+    assert.deepEqual(doc.tags, ['mongodb']);
+
+    await Test.updateOne({ _id }, { $push: { tags: 'javascript' } });
+
+    doc = await Test.findOne({ name: 'test2' });
+    assert.deepEqual(doc.tags, ['mongodb', 'javascript']);
+  });
+
+  describe('findOneAndUpdate', function() {
+    it('handles upsert', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        other: String
+      }));
+      let doc = await Test.findOneAndUpdate(
+        { name: 'test' },
+        { other: 'other' },
+        { upsert: true }
+      );
+      assert.ok(doc);
+      assert.equal(doc.name, 'test');
+      assert.equal(doc.other, 'other');
+
+      doc = await Test.findOne();
+      assert.ok(doc);
+      assert.equal(doc.name, 'test');
+      assert.equal(doc.other, 'other');
+    });
+  });
 });

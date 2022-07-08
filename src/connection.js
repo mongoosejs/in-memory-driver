@@ -30,11 +30,15 @@ module.exports = class Connection extends MongooseConnection {
       return callback(new Error('Connection failed'));
     }
     this.readyState = 1;
-    callback && callback(null);
+    callback && callback(null, this);
     return Promise.resolve(this);
   }
 
-   doClose(force, cb) {
+  asPromise() {
+    return Promise.resolve(this);
+  }
+
+  doClose(force, cb) {
     if (cb) {
       cb(null);
     }
