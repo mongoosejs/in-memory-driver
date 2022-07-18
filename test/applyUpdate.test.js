@@ -129,6 +129,22 @@ describe('$operators', function() {
     result = await newModel.findOne();
     assert.equal(result.displayName, 'Test');
 
+    const Nested = mongoose.model('Nested', mongoose.Schema({ title: String, displayName: { name: String, gamerTag: String } }));
+
+    const nested = await Nested.create({ 
+      title: 'Nested Test',
+      displayName: { name: 'Quiz', gamerTag: 'zicle'}
+    });
+
+    await Nested.updateOne({ _id: nested._id }, {$rename: {"displayName.name": "displayName.title"}});
+
+    result = await Nested.findOne();
+
+    console.log(result);
+    assert.equal(result.title, 'Nested Test');
+    assert(result.displayName.title);
+    assert.equal(result.displayName.title, 'Quiz');
+
 
   });
 
@@ -151,6 +167,28 @@ describe('$operators', function() {
     result = await Nested.findOne();
     assert(result.displayName);
     assert.equal(result.displayName.suffix, undefined);
+
+    const arrayModel = mongoose.model('Array', mongoose.Schema({ name: String, array: [], nestedArray: {
+      stack: []
+    }}));
+
+    const arrayStrings = await arrayModel.create({ name: 'Array Test', array: ['Hello']});
+
+    await arrayModel.updateOne({ _id: arrayStrings }, { $unset: {array: 1 }});
+
+    result = await arrayModel.findOne();
+
+    assert.equal(result.array.length, 0);
+
+    const nestedArray = await arrayModel.create({ name: 'Last Test', array: ['Goodbye'], nestedArray: {
+      stack: ['Farewell']
+    }});
+
+    await arrayModel.updateOne({ _id: nestedArray._id }, { $unset: {"nestedArray.stack": 1} });
+
+    result = await arrayModel.findById({ _id: nestedArray._id});
+
+    assert.equal(result.nestedArray.stack.length, 0);
 
   });
 });
