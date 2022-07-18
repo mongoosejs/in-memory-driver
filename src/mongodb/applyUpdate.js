@@ -32,4 +32,62 @@ module.exports = function applyUpdate(obj, update) {
       }
     }
   }
+  if (update.$inc) {
+    for (const key of Object.keys(update.$inc)) {
+      let initial = mpath.get(key, obj);
+      mpath.set(key, update.$inc[key]+initial, obj);
+    }
+  }
+  if (update.$min) {
+    for (const key of Object.keys(update.$min)) {
+      let initial = mpath.get(key, obj);
+      if (initial > update.$min[key] || initial == null) {
+        mpath.set(key, update.$min[key], obj);
+      }
+    }
+  }
+  if (update.$max) {
+    for (const key of Object.keys(update.$max)) {
+      let initial = mpath.get(key, obj);
+      if (initial < update.$max[key] || initial == null) {
+        mpath.set(key, update.$max[key], obj);
+      }
+    }
+  }
+  if (update.$mul) {
+    for (const key of Object.keys(update.$mul)) {
+      let initial = mpath.get(key, obj);
+      if (initial == null) {
+        mpath.set(key, 0, obj);
+      } else {
+        mpath.set(key, update.$mul[key]*initial, obj);
+      }
+    }
+  }
+  if (update.$rename) {
+    for (const key of Object.keys(update.$rename)) {
+      // need to search for nested keys
+      const exists = Object.keys(obj).find((item) => item == update.$rename[key]);
+      if (exists) {
+        // need to check this will delete dotted paths
+        delete obj[exists];
+      }
+      let initial = mpath.get(key, obj);
+      if (initial == update.$rename[key] || initial == null) continue;
+      let value = obj[key];
+      mpath.unset(key, obj);
+      mpath.unset(update.$rename[key], obj);
+      mpath.set(update.$rename[key], value, obj);
+    }
+  }
+  if (update.$unset) {
+    for (const key of Object.keys(update.$unset)) {
+      // need to check for nested paths and arrays
+      if (typeof update.$unset[key] == 'object' && update.$unset[key] != null) {
+        update.$unset = update.$unset[key];
+        return applyUpdate(obj[key], update)
+      }
+      return mpath.unset(key, obj);
+    }
+  }
 };
