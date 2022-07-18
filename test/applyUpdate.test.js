@@ -140,17 +140,15 @@ describe('$operators', function() {
     await Test.updateOne({_id: unset._id}, {$unset: { value: 2}});
 
     let result = await Test.findOne();
-
     assert.equal(result.value, undefined);
 
     const Nested = mongoose.model('Nested', mongoose.Schema({ name: String, displayName: {prefix: String, suffix: String}}));
 
     const nested = await Nested.create({ name: 'Test Testerson', displayName: {prefix: 'Quiz', suffix: 'zicle'}});
 
-    await Nested.updateOne({ _id: nested._id }, {$unset: {displayName: {suffix: 'zicle'}}});
+    await Nested.updateOne({ _id: nested._id }, {$unset: {"displayName.suffix": 1}});
 
     result = await Nested.findOne();
-
     assert(result.displayName);
     assert.equal(result.displayName.suffix, undefined);
 

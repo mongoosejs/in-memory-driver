@@ -82,11 +82,6 @@ module.exports = function applyUpdate(obj, update) {
   }
   if (update.$unset) {
     for (const key of Object.keys(update.$unset)) {
-      // need to check for nested paths and arrays
-      if (typeof update.$unset[key] == 'object' && update.$unset[key] != null) {
-        update.$unset = update.$unset[key];
-        return applyUpdate(obj[key], update)
-      }
       return mpath.unset(key, obj);
     }
   }
