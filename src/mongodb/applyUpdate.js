@@ -66,14 +66,13 @@ module.exports = function applyUpdate(obj, update) {
   }
   if (update.$rename) {
     for (const key of Object.keys(update.$rename)) {
-      // need to search for nested key
+
       const exists = mpath.get(update.$rename[key], obj);
       if (exists) {
         mpath.unset(update.$rename[key], obj);
       }
-      let initial = mpath.get(key, obj);
-      if (initial == update.$rename[key] || initial == null) continue;
       let value = mpath.get(key, obj);
+      if (value == update.$rename[key] || value == null) continue;
       mpath.unset(key, obj);
       mpath.set(update.$rename[key], value, obj);
     }

@@ -28,9 +28,20 @@ describe('$operators', function() {
 
     await Test.updateOne({_id: entry._id}, {$inc: { value: 2}});
 
-    const result = await Test.findOne();
+    let result = await Test.findOne();
 
     assert.equal(3, result.value);
+
+    const Nested = mongoose.model('Nested', mongoose.Schema({name: String, item: { value: Number }}));
+
+    const nested = await Nested.create({ name: 'test', item: { value: 1 }});
+
+    await Nested.updateOne({ _id: nested._id }, { $inc: { "item.value": 2 } });
+
+    result = await Nested.findOne();
+
+    assert.equal(3, result.item.value);
+
   });
 
   it('$min', async function() {
@@ -107,18 +118,16 @@ describe('$operators', function() {
   });
 
   it('$rename', async function() {
-    const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
+    const Test = mongoose.model('Test', mongoose.Schema({ name: String, displayName: String }));
 
     const willRename = await Test.create({ name: 'test' });
 
     await Test.updateOne({_id: willRename._id}, {$rename: { name: 'displayName'}});
 
     let result = await Test.findOne();
-    const keys = Object.keys(result._doc);
-    const newKey = keys.find((item) => item == 'displayName');
-    const oldKey = keys.find((item) => item == 'name');
-    assert(newKey);
-    assert(!oldKey);
+    assert(result.displayName);
+    assert(!result.name);
+    assert.equal(result.displayName, 'test');
 
     const newModel = mongoose.model('newModel', mongoose.Schema({ name: String, displayName: String }));
 
@@ -129,7 +138,7 @@ describe('$operators', function() {
     result = await newModel.findOne();
     assert.equal(result.displayName, 'Test');
 
-    const Nested = mongoose.model('Nested', mongoose.Schema({ title: String, displayName: { name: String, gamerTag: String } }));
+    const Nested = mongoose.model('Nested', mongoose.Schema({ title: String, displayName: { name: String, gamerTag: String, title: String } }));
 
     const nested = await Nested.create({ 
       title: 'Nested Test',
@@ -140,9 +149,8 @@ describe('$operators', function() {
 
     result = await Nested.findOne();
 
-    console.log(result);
     assert.equal(result.title, 'Nested Test');
-    assert(result.displayName.title);
+    assert.ok(result.displayName.title);
     assert.equal(result.displayName.title, 'Quiz');
 
 
