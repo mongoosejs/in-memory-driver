@@ -39,16 +39,28 @@ describe('in-memory driver', function() {
     assert.equal(docs[1].name, 'test');
   });
 
-  it('findOne', async function() {
-    const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
+  describe('findOne', function() {
+    it('works', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
 
-    await Test.create([{ name: 'test' }, { name: 'test2' }]);
+      await Test.create([{ name: 'test' }, { name: 'test2' }]);
 
-    let doc = await Test.findOne({ name: 'test' });
-    assert.equal(doc.name, 'test');
+      let doc = await Test.findOne({ name: 'test' });
+      assert.equal(doc.name, 'test');
 
-    doc = await Test.findOne({ name: 'test2' });
-    assert.equal(doc.name, 'test2');
+      doc = await Test.findOne({ name: 'test2' });
+      assert.equal(doc.name, 'test2');
+    });
+
+    it('supports projections', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({ name: String, age: Number }));
+
+      await Test.create([{ name: 'test', age: 29 }]);
+
+      const doc = await Test.findOne({ name: 'test' }).select('name');
+      assert.equal(doc.name, 'test');
+      assert.strictEqual(doc.age, undefined);
+    });
   });
 
   it('updateOne', async function() {
