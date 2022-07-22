@@ -63,7 +63,7 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   deleteMany(query, options, cb) {
-    let result = { deletedCount: 0 };
+    const result = { deletedCount: 0 };
     const filter = sift(query);
 
     const newDocs = [];
@@ -101,7 +101,7 @@ module.exports = class Collection extends MongooseCollection {
   updateOne(query, update, options, cb) {
     const doc = this._documents.find(sift(query));
 
-    let result = { matchedCount: 0, modifiedCount: 0 };
+    const result = { matchedCount: 0, modifiedCount: 0 };
 
     if (doc != null) {
       applyUpdate(doc, update);
@@ -121,7 +121,7 @@ module.exports = class Collection extends MongooseCollection {
 
     return;
   }
-}
+};
 
 function getBSONType(val) {
   if (typeof val === 'number') {

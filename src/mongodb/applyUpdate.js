@@ -12,7 +12,7 @@ module.exports = function applyUpdate(obj, update) {
     for (const key of Object.keys(update.$addToSet)) {
       const arr = mpath.get(key, obj);
       if (Array.isArray(arr)) {
-        let existing = arr.find(el => el === update.$addToSet[key]);
+        const existing = arr.find(el => el === update.$addToSet[key]);
         if (existing) {
           continue;
         }
@@ -34,13 +34,13 @@ module.exports = function applyUpdate(obj, update) {
   }
   if (update.$inc) {
     for (const key of Object.keys(update.$inc)) {
-      let initial = mpath.get(key, obj);
-      mpath.set(key, update.$inc[key]+initial, obj);
+      const initial = mpath.get(key, obj);
+      mpath.set(key, update.$inc[key] + initial, obj);
     }
   }
   if (update.$min) {
     for (const key of Object.keys(update.$min)) {
-      let initial = mpath.get(key, obj);
+      const initial = mpath.get(key, obj);
       if (initial > update.$min[key] || initial == null) {
         mpath.set(key, update.$min[key], obj);
       }
@@ -48,7 +48,7 @@ module.exports = function applyUpdate(obj, update) {
   }
   if (update.$max) {
     for (const key of Object.keys(update.$max)) {
-      let initial = mpath.get(key, obj);
+      const initial = mpath.get(key, obj);
       if (initial < update.$max[key] || initial == null) {
         mpath.set(key, update.$max[key], obj);
       }
@@ -56,11 +56,11 @@ module.exports = function applyUpdate(obj, update) {
   }
   if (update.$mul) {
     for (const key of Object.keys(update.$mul)) {
-      let initial = mpath.get(key, obj);
+      const initial = mpath.get(key, obj);
       if (initial == null) {
         mpath.set(key, 0, obj);
       } else {
-        mpath.set(key, update.$mul[key]*initial, obj);
+        mpath.set(key, update.$mul[key] * initial, obj);
       }
     }
   }
@@ -71,7 +71,7 @@ module.exports = function applyUpdate(obj, update) {
       if (exists) {
         mpath.unset(update.$rename[key], obj);
       }
-      let value = mpath.get(key, obj);
+      const value = mpath.get(key, obj);
       if (value == update.$rename[key] || value == null) continue;
       mpath.unset(key, obj);
       mpath.set(update.$rename[key], value, obj);

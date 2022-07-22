@@ -19,7 +19,7 @@ describe('in-memory driver', function() {
     mongoose.deleteModel(/.*/);
     delete mongoose.models.Test;
   });
-  
+
   it('find', async function() {
     const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
 
