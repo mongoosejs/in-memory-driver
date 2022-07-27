@@ -2,9 +2,12 @@
   "name": "@mongoosejs/in-memory-driver",
   "version": "0.0.1",
   "scripts": {
-    "test": "mocha test/*.test.js"
+    "test": "mocha test/*.test.js",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "eslint": "^8.20.0",
+    "eslint-plugin-mocha-no-only": "^1.1.1",
     "mocha": "10.0.0",
     "mongoose": "~6.4"
   },

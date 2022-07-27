@@ -17,4 +17,4 @@ module.exports = class Cursor {
   toArray(cb) {
     return cb(null, this.docs);
   }
-}
+};

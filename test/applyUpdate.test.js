@@ -20,23 +20,23 @@ describe('$operators', function() {
     mongoose.deleteModel(/.*/);
     delete mongoose.models.Test;
   });
-  
+
   it('$inc', async function() {
     const Test = mongoose.model('Test', mongoose.Schema({ name: String, value: Number }));
 
     const entry = await Test.create({ name: 'test', value: 1 });
 
-    await Test.updateOne({_id: entry._id}, {$inc: { value: 2}});
+    await Test.updateOne({ _id: entry._id }, { $inc: { value: 2 } });
 
     let result = await Test.findOne();
 
     assert.equal(3, result.value);
 
-    const Nested = mongoose.model('Nested', mongoose.Schema({name: String, item: { value: Number }}));
+    const Nested = mongoose.model('Nested', mongoose.Schema({ name: String, item: { value: Number } }));
 
-    const nested = await Nested.create({ name: 'test', item: { value: 1 }});
+    const nested = await Nested.create({ name: 'test', item: { value: 1 } });
 
-    await Nested.updateOne({ _id: nested._id }, { $inc: { "item.value": 2 } });
+    await Nested.updateOne({ _id: nested._id }, { $inc: { 'item.value': 2 } });
 
     result = await Nested.findOne();
 
@@ -49,7 +49,7 @@ describe('$operators', function() {
 
     const noUpdate = await Test.create({ name: 'test', value: 1 });
 
-    await Test.updateOne({_id: noUpdate._id}, {$min: { value: 2}});
+    await Test.updateOne({ _id: noUpdate._id }, { $min: { value: 2 } });
 
     let result = await Test.findOne();
 
@@ -57,15 +57,15 @@ describe('$operators', function() {
 
     const update = await Test.create({ name: 'Should decrease', value: 3 });
 
-    await Test.updateOne({ _id: update._id }, {$min: { value: 2 }});
+    await Test.updateOne({ _id: update._id }, { $min: { value: 2 } });
 
     result = await Test.findById({ _id: update._id });
-    
+
     assert.equal(2, result.value);
 
-    const insertValue = await Test.create({ name: 'Should insert 2'});
+    const insertValue = await Test.create({ name: 'Should insert 2' });
 
-    await Test.updateOne({ _id: insertValue._id }, {$min: { value: 2 }});
+    await Test.updateOne({ _id: insertValue._id }, { $min: { value: 2 } });
 
     result = await Test.findById({ _id: insertValue._id });
     assert.equal(2, result.value);
@@ -76,7 +76,7 @@ describe('$operators', function() {
 
     const noUpdate = await Test.create({ name: 'test', value: 1 });
 
-    await Test.updateOne({_id: noUpdate._id}, {$max: { value: 2}});
+    await Test.updateOne({ _id: noUpdate._id }, { $max: { value: 2 } });
 
     let result = await Test.findOne();
 
@@ -84,15 +84,15 @@ describe('$operators', function() {
 
     const update = await Test.create({ name: 'Should decrease', value: 3 });
 
-    await Test.updateOne({ _id: update._id }, {$max: { value: 2 }});
+    await Test.updateOne({ _id: update._id }, { $max: { value: 2 } });
 
     result = await Test.findById({ _id: update._id });
-    
+
     assert.equal(3, result.value);
 
-    const insertValue = await Test.create({ name: 'Should insert 2'});
+    const insertValue = await Test.create({ name: 'Should insert 2' });
 
-    await Test.updateOne({ _id: insertValue._id }, {$max: { value: 2 }});
+    await Test.updateOne({ _id: insertValue._id }, { $max: { value: 2 } });
 
     result = await Test.findById({ _id: insertValue._id });
     assert.equal(2, result.value);
@@ -103,15 +103,15 @@ describe('$operators', function() {
 
     const multiply = await Test.create({ name: 'test', value: 1 });
 
-    await Test.updateOne({_id: multiply._id}, {$mul: { value: 2}});
+    await Test.updateOne({ _id: multiply._id }, { $mul: { value: 2 } });
 
     let result = await Test.findOne();
 
     assert.equal(2, result.value);
 
-    const insertValue = await Test.create({ name: 'Should insert 0'});
+    const insertValue = await Test.create({ name: 'Should insert 0' });
 
-    await Test.updateOne({ _id: insertValue._id }, {$mul: { value: 2 }});
+    await Test.updateOne({ _id: insertValue._id }, { $mul: { value: 2 } });
 
     result = await Test.findById({ _id: insertValue._id });
     assert.equal(0, result.value);
@@ -122,7 +122,7 @@ describe('$operators', function() {
 
     const willRename = await Test.create({ name: 'test' });
 
-    await Test.updateOne({_id: willRename._id}, {$rename: { name: 'displayName'}});
+    await Test.updateOne({ _id: willRename._id }, { $rename: { name: 'displayName' } });
 
     let result = await Test.findOne();
     assert(result.displayName);
@@ -131,21 +131,21 @@ describe('$operators', function() {
 
     const newModel = mongoose.model('newModel', mongoose.Schema({ name: String, displayName: String }));
 
-    const fieldExists = await newModel.create({ name: 'Test', displayName: 'Test Testerson'});
+    const fieldExists = await newModel.create({ name: 'Test', displayName: 'Test Testerson' });
 
-    await newModel.updateOne({ _id: fieldExists }, {$rename: { name: 'displayName' }});
+    await newModel.updateOne({ _id: fieldExists }, { $rename: { name: 'displayName' } });
 
     result = await newModel.findOne();
     assert.equal(result.displayName, 'Test');
 
     const Nested = mongoose.model('Nested', mongoose.Schema({ title: String, displayName: { name: String, gamerTag: String, title: String } }));
 
-    const nested = await Nested.create({ 
+    const nested = await Nested.create({
       title: 'Nested Test',
-      displayName: { name: 'Quiz', gamerTag: 'zicle'}
+      displayName: { name: 'Quiz', gamerTag: 'zicle' }
     });
 
-    await Nested.updateOne({ _id: nested._id }, {$rename: {"displayName.name": "displayName.title"}});
+    await Nested.updateOne({ _id: nested._id }, { $rename: { 'displayName.name': 'displayName.title' } });
 
     result = await Nested.findOne();
 
@@ -161,16 +161,16 @@ describe('$operators', function() {
 
     const unset = await Test.create({ name: 'test', value: 1 });
 
-    await Test.updateOne({_id: unset._id}, {$unset: { value: 2}});
+    await Test.updateOne({ _id: unset._id }, { $unset: { value: 2 } });
 
     let result = await Test.findOne();
     assert.equal(result.value, undefined);
 
-    const Nested = mongoose.model('Nested', mongoose.Schema({ name: String, displayName: {prefix: String, suffix: String}}));
+    const Nested = mongoose.model('Nested', mongoose.Schema({ name: String, displayName: { prefix: String, suffix: String } }));
 
-    const nested = await Nested.create({ name: 'Test Testerson', displayName: {prefix: 'Quiz', suffix: 'zicle'}});
+    const nested = await Nested.create({ name: 'Test Testerson', displayName: { prefix: 'Quiz', suffix: 'zicle' } });
 
-    await Nested.updateOne({ _id: nested._id }, {$unset: {"displayName.suffix": 1}});
+    await Nested.updateOne({ _id: nested._id }, { $unset: { 'displayName.suffix': 1 } });
 
     result = await Nested.findOne();
     assert(result.displayName);
@@ -178,11 +178,11 @@ describe('$operators', function() {
 
     const arrayModel = mongoose.model('Array', mongoose.Schema({ name: String, array: [], nestedArray: {
       stack: []
-    }}));
+    } }));
 
-    const arrayStrings = await arrayModel.create({ name: 'Array Test', array: ['Hello']});
+    const arrayStrings = await arrayModel.create({ name: 'Array Test', array: ['Hello'] });
 
-    await arrayModel.updateOne({ _id: arrayStrings }, { $unset: {array: 1 }});
+    await arrayModel.updateOne({ _id: arrayStrings }, { $unset: { array: 1 } });
 
     result = await arrayModel.findOne();
 
@@ -190,11 +190,11 @@ describe('$operators', function() {
 
     const nestedArray = await arrayModel.create({ name: 'Last Test', array: ['Goodbye'], nestedArray: {
       stack: ['Farewell']
-    }});
+    } });
 
-    await arrayModel.updateOne({ _id: nestedArray._id }, { $unset: {"nestedArray.stack": 1} });
+    await arrayModel.updateOne({ _id: nestedArray._id }, { $unset: { 'nestedArray.stack': 1 } });
 
-    result = await arrayModel.findById({ _id: nestedArray._id});
+    result = await arrayModel.findById({ _id: nestedArray._id });
 
     assert.equal(result.nestedArray.stack.length, 0);
 
