@@ -57,8 +57,12 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
+    const fn = getDocumentProjectionFilterFunction(doc, options.projection || {});
+
+    const projectedDoc = fn(doc);
+
     if (cb != null) {
-      cb(null, doc);
+      cb(null, projectedDoc);
     }
   }
 
@@ -185,4 +189,69 @@ function compareValues(a, b, descending) {
   } else {
     return descending ? -1 : 1;
   }
+}
+
+function getDocumentProjectionFilterFunction(doc, projection) {
+  const id = projection && projection._id !== 0;
+
+  const keys = Object.getOwnPropertyNames(projection)
+    .filter(v => v !== '_id')
+    .filter(v => /[a-z]/i.test(v));
+
+  if (!keys.length) {
+    return (d) => d;
+  }
+
+  const type = incVsExc(projection);
+
+  if (type === 'inclusive') {
+    return (d) => {
+      const ret = {
+        _id: id ? d._id : undefined
+      };
+      for (const key of keys) {
+        ret[key] = d[key];
+      }
+
+      return ret;
+    };
+  } else if (type === 'exclusive') {
+    return (d) => {
+      const ret = {
+        _id: id ? d._id : undefined
+      };
+      for (const key in Object.getOwnPropertyNames(d)) {
+        if (!keys.includes(key)) {
+          ret[key] = d[key];
+        }
+      }
+
+      return ret;
+    };
+  } else {
+    return (d) => {
+      return d;
+    };
+  }
+}
+
+function incVsExc(projection) {
+  const keys = [];
+  const values = [];
+
+  Object.entries(projection).forEach(([key, value]) => {
+    if (key !== '_id') {
+      keys.push[key];
+      values.push(value);
+    }
+  });
+
+  const ones = values.filter(v => v === 1);
+  const zeros = values.filter(v => v === 0);
+
+  if (ones.length && zeros.length) {
+    throw new Error('inclusive or exclusive projections only');
+  }
+
+  return ones.length > zeros.length ? 'inclusive' : 'exclusive';
 }

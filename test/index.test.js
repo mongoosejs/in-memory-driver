@@ -58,7 +58,9 @@ describe('in-memory driver', function() {
       await Test.create([{ name: 'test', age: 29 }]);
 
       const doc = await Test.findOne({ name: 'test' }).select('name');
-      assert.notEqual(doc._id, undefined);
+      const str = doc._id.toString();
+
+      assert.strictEqual(/^[a-z0-9]{24}$/.test(str), true);
       assert.equal(doc.name, 'test');
       assert.strictEqual(doc.age, undefined);
     });
@@ -72,7 +74,7 @@ describe('in-memory driver', function() {
       assert.equal(doc._id, undefined);
       assert.equal(doc.name, undefined);
       assert.strictEqual(doc.age, 29);
-    })
+    });
   });
 
   it('updateOne', async function() {
