@@ -62,6 +62,17 @@ describe('in-memory driver', function() {
       assert.equal(doc.name, 'test');
       assert.strictEqual(doc.age, undefined);
     });
+
+    it('supports projections with disabled _id', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({ name: String, age: Number }));
+
+      await Test.create([{ name: 'test', age: 29 }]);
+
+      const doc = await Test.findOne({ name: 'test' }).select('age -_id');
+      assert.equal(doc._id, undefined);
+      assert.equal(doc.name, undefined);
+      assert.strictEqual(doc.age, 29);
+    })
   });
 
   it('updateOne', async function() {
