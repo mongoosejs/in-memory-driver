@@ -33,7 +33,9 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   find(query, options, cb) {
-    const result = this._documents.filter(sift(query));
+    const fn = getDocumentProjectionFilterFunction(options.projection || {});
+
+    const result = this._documents.filter(sift(query)).filter(fn);
 
     if (options && options.sort) {
       result.sort((doc1, doc2) => {
@@ -57,7 +59,7 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    const fn = getDocumentProjectionFilterFunction(doc, options.projection || {});
+    const fn = getDocumentProjectionFilterFunction(options.projection || {});
 
     const projectedDoc = fn(doc);
 
@@ -191,7 +193,7 @@ function compareValues(a, b, descending) {
   }
 }
 
-function getDocumentProjectionFilterFunction(doc, projection) {
+function getDocumentProjectionFilterFunction(projection) {
   const id = projection && projection._id !== 0;
 
   const keys = Object.getOwnPropertyNames(projection)
