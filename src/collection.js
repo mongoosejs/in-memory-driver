@@ -33,9 +33,8 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   find(query, options, cb) {
-    const fn = getDocumentProjectionFilterFunction(options.projection || {});
-
-    const result = this._documents.filter(sift(query)).filter(fn);
+    const fn = getDocumentProjectionMapFunction(options.projection);
+    const result = this._documents.filter(sift(query)).map(fn);
 
     if (options && options.sort) {
       result.sort((doc1, doc2) => {
@@ -59,7 +58,7 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    const fn = getDocumentProjectionFilterFunction(options.projection || {});
+    const fn = getDocumentProjectionMapFunction(options.projection || {});
 
     const projectedDoc = fn(doc);
 
@@ -193,15 +192,20 @@ function compareValues(a, b, descending) {
   }
 }
 
-function getDocumentProjectionFilterFunction(projection) {
+function getDocumentProjectionMapFunction(projection) {
   const id = projection && projection._id !== 0;
+  const keys = Object.getOwnPropertyNames(projection).filter(v => v !== '_id');
 
-  const keys = Object.getOwnPropertyNames(projection)
-    .filter(v => v !== '_id')
-    .filter(v => /[a-z]/i.test(v));
-
-  if (!keys.length) {
+  if (!keys.length && id) {
     return (d) => d;
+  } else if (!keys.length && !id) {
+    return (d) => {
+      const ret = {};
+      for (const key of keys) {
+        ret[key] = d[key];
+      }
+      return ret;
+    };
   }
 
   const type = incVsExc(projection);

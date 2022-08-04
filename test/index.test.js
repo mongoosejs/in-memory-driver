@@ -20,23 +20,42 @@ describe('in-memory driver', function() {
     delete mongoose.models.Test;
   });
 
-  it('find', async function() {
-    const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
+  describe('find', async function() {
+    it('works', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
 
-    await Test.create([{ name: 'test' }, { name: 'test2' }]);
+      await Test.create([{ name: 'test' }, { name: 'test2' }]);
 
-    let docs = await Test.find({ name: 'test' });
-    assert.equal(docs.length, 1);
-    assert.equal(docs[0].name, 'test');
+      let docs = await Test.find({ name: 'test' });
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].name, 'test');
 
-    docs = await Test.find({ name: 'test2' });
-    assert.equal(docs.length, 1);
-    assert.equal(docs[0].name, 'test2');
+      docs = await Test.find({ name: 'test2' });
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].name, 'test2');
 
-    docs = await Test.find({}).sort({ name: -1 });
-    assert.equal(docs.length, 2);
-    assert.equal(docs[0].name, 'test2');
-    assert.equal(docs[1].name, 'test');
+      docs = await Test.find({}).sort({ name: -1 });
+      assert.equal(docs.length, 2);
+      assert.equal(docs[0].name, 'test2');
+      assert.equal(docs[1].name, 'test');
+    });
+
+    it('works with projections', async function() {
+      const schema = mongoose.Schema({
+        name: String,
+        age: Number
+      });
+
+      const Test = mongoose.model('Test', schema);
+
+      await Test.create([{ name: 'test', age: 29 }, { name: 'test2', age: 2 }]);
+
+      const docs = await Test.find({ age: 29 }).select('age');
+      assert.strictEqual(docs.length, 1);
+      assert.strictEqual(docs[0].name, undefined);
+      assert.strictEqual(/[a-f0-9]{24}/i.test(docs[0]._id.toString()), true);
+      assert.strictEqual(docs[0].age, 29);
+    });
   });
 
   describe('findOne', function() {
@@ -60,7 +79,7 @@ describe('in-memory driver', function() {
       const doc = await Test.findOne({ name: 'test' }).select('name');
       const str = doc._id.toString();
 
-      assert.strictEqual(/^[a-z0-9]{24}$/.test(str), true);
+      assert.strictEqual(/^[a-f0-9]{24}$/i.test(str), true);
       assert.equal(doc.name, 'test');
       assert.strictEqual(doc.age, undefined);
     });
