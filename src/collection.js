@@ -58,7 +58,7 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    const fn = getDocumentProjectionMapFunction(options.projection || {});
+    const fn = getDocumentProjectionMapFunction(options.projection);
 
     const projectedDoc = fn(doc);
 
