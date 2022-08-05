@@ -162,5 +162,24 @@ describe('in-memory driver', function() {
       assert.equal(doc.name, 'test');
       assert.equal(doc.other, 'other');
     });
+
+    it('supports projections', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        other: String
+      }));
+
+      await Test.create({ name: 'test', other: 'ing' });
+
+      const doc = await Test.findOneAndUpdate(
+        { name: 'test' },
+        { name: 'sing' }
+      );
+
+      assert.ok(doc);
+      assert.equal(doc.name, 'sing');
+      assert.equal(doc.other, undefined);
+      assert.equal(/^[a-f0-9]{24}$/i.test(doc._id.toString()), true);
+    });
   });
 });
