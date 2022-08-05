@@ -40,7 +40,7 @@ describe('in-memory driver', function() {
       assert.equal(docs[1].name, 'test');
     });
 
-    it('works with projections', async function() {
+    it('supports projections', async function() {
       const schema = mongoose.Schema({
         name: String,
         age: Number
@@ -54,6 +54,23 @@ describe('in-memory driver', function() {
       assert.strictEqual(docs.length, 1);
       assert.strictEqual(docs[0].name, undefined);
       assert.strictEqual(/[a-f0-9]{24}/i.test(docs[0]._id.toString()), true);
+      assert.strictEqual(docs[0].age, 29);
+    });
+
+    it('supports projections with suppressed _id', async function() {
+      const schema = mongoose.Schema({
+        name: String,
+        age: Number
+      });
+
+      const Test = mongoose.model('Test', schema);
+
+      await Test.create([{ name: 'test', age: 29 }, { name: 'test2', age: 2 }]);
+
+      const docs = await Test.find({ age: 29 }).select('age -_id');
+      assert.strictEqual(docs.length, 1);
+      assert.strictEqual(docs[0].name, undefined);
+      assert.strictEqual(docs[0]._id, undefined);
       assert.strictEqual(docs[0].age, 29);
     });
   });
