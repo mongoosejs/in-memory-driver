@@ -242,12 +242,10 @@ function getDocumentProjectionMapFunction(projection) {
 }
 
 function incVsExc(projection) {
-  const keys = [];
   const values = [];
 
   Object.entries(projection).forEach(([key, value]) => {
     if (key !== '_id') {
-      keys.push[key];
       values.push(value);
     }
   });
