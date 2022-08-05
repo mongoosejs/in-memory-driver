@@ -33,7 +33,7 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   find(query, options, cb) {
-    const fn = getDocumentProjectionMapFunction(options.projection);
+    const fn = makeMapFn(options.projection);
     const result = this._documents.filter(sift(query)).map(fn);
 
     if (options && options.sort) {
@@ -58,7 +58,7 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    const fn = getDocumentProjectionMapFunction(options.projection);
+    const fn = makeMapFn(options.projection);
 
     const projectedDoc = fn(doc);
 
@@ -192,29 +192,23 @@ function compareValues(a, b, descending) {
   }
 }
 
-function getDocumentProjectionMapFunction(projection) {
+function makeMapFn(projection) {
   const id = projection && projection._id !== 0;
   const keys = Object.getOwnPropertyNames(projection).filter(v => v !== '_id');
+  const passthroughfn = generatePassThroughFN(id, keys);
 
-  if (!keys.length && id) {
-    return (d) => d;
-  } else if (!keys.length && !id) {
-    return (d) => {
-      const ret = {};
-      for (const key of keys) {
-        ret[key] = d[key];
-      }
-      return ret;
-    };
+  if (passthroughfn) {
+    return passthroughfn;
   }
 
   const type = incVsExc(projection);
 
   if (type === 'inclusive') {
-    return (d) => {
+    return function(d) {
       const ret = {
         _id: id ? d._id : undefined
       };
+
       for (const key of keys) {
         ret[key] = d[key];
       }
@@ -222,7 +216,7 @@ function getDocumentProjectionMapFunction(projection) {
       return ret;
     };
   } else if (type === 'exclusive') {
-    return (d) => {
+    return function(d) {
       const ret = {
         _id: id ? d._id : undefined
       };
@@ -241,6 +235,20 @@ function getDocumentProjectionMapFunction(projection) {
   }
 }
 
+function generatePassThroughFN(id, keys) {
+  if (!keys.length && id) {
+    return (d) => d;
+  } else if (!keys.length && !id) {
+    return (d) => {
+      const ret = {};
+      for (const key of keys) {
+        ret[key] = d[key];
+      }
+      return ret;
+    };
+  }
+}
+
 function incVsExc(projection) {
   const values = [];
 
@@ -255,6 +263,10 @@ function incVsExc(projection) {
 
   if (ones.length && zeros.length) {
     throw new Error('inclusive or exclusive projections only');
+  }
+
+  if (!ones.length && !zeros.length) {
+    throw new Error('empty projection object');
   }
 
   return ones.length > zeros.length ? 'inclusive' : 'exclusive';
