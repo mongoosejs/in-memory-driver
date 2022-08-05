@@ -173,7 +173,8 @@ describe('in-memory driver', function() {
 
       const doc = await Test.findOneAndUpdate(
         { name: 'test' },
-        { name: 'sing' }
+        { name: 'sing' },
+        { projection: 'name' }
       );
 
       assert.ok(doc);
