@@ -237,9 +237,11 @@ function makeMapFn(projection) {
 
 function generatePassThroughFN(id, keys) {
   if (!keys.length && id) {
-    return (d) => d;
+    return function(d) {
+      return d;
+    };
   } else if (!keys.length && !id) {
-    return (d) => {
+    return function(d) {
       const ret = {};
       for (const key of keys) {
         ret[key] = d[key];
