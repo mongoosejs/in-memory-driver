@@ -57,7 +57,6 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
-    console.dir(doc, { color: true, depth: null });
     const { projection } = options || {};
     const projectedDoc = applyProjectionToDoc(doc, projection);
 
@@ -103,7 +102,6 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   updateOne(query, update, options, cb) {
-    console.dir(this._documents, { color: true, depth: null });
     const doc = this._documents.find(sift(query));
 
     const result = { matchedCount: 0, modifiedCount: 0 };
@@ -198,11 +196,6 @@ function applyProjectionToDoc(doc, projection) {
   }
 
   const { keys, inclusive, exclusive, _id } = projectionInfo(projection);
-
-  if (!inclusive && !exclusive && !_id.suppress) {
-    return doc;
-  }
-
   const ret = {};
 
   if (inclusive) {
