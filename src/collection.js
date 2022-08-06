@@ -57,8 +57,12 @@ module.exports = class Collection extends MongooseCollection {
 
   findOne(query, options, cb) {
     const doc = this._documents.find(sift(query));
+    console.dir(doc, { color: true, depth: null });
+    const { projection } = options || {};
+    const projectedDoc = applyProjectionToDoc(doc, projection);
+
     if (cb != null) {
-      cb(null, doc);
+      cb(null, projectedDoc);
     }
   }
 
@@ -99,6 +103,7 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   updateOne(query, update, options, cb) {
+    console.dir(this._documents, { color: true, depth: null });
     const doc = this._documents.find(sift(query));
 
     const result = { matchedCount: 0, modifiedCount: 0 };
@@ -186,3 +191,57 @@ function compareValues(a, b, descending) {
     return descending ? -1 : 1;
   }
 }
+
+function applyProjectionToDoc(doc, projection) {
+  if (!projection || !Object.keys(projection).length) {
+    return doc;
+  }
+
+  const { keys, inclusive, exclusive, _id } = projectionInfo(projection);
+
+  if (!inclusive && !exclusive && !_id.suppress) {
+    return doc;
+  }
+
+  const ret = {};
+
+  if (inclusive) {
+    for (const key of keys) {
+      ret[key] = doc[key];
+    }
+  } else if (exclusive) {
+    for (const docKey of Object.getOwnPropertyNames(doc)) {
+      if (keys.includes(docKey)) {
+        continue;
+      }
+      ret[docKey] = doc[docKey];
+    }
+  }
+
+  if (!_id.suppress) {
+    ret._id = doc._id;
+  }
+
+  return ret;
+}
+
+function projectionInfo(projection) {
+  const suppress = projection && projection._id === 0;
+  const _id = key => key !== '_id';
+  const nonIdKeys = Object.getOwnPropertyNames(projection).filter(_id);
+
+  const allOnesOrZeros = nonIdKeys.map(key => {
+    return projection[key];
+  });
+
+  return {
+    keys: nonIdKeys,
+    inclusive: allOnesOrZeros.includes(1),
+    exclusive: allOnesOrZeros.includes(0),
+    _id: {
+      suppress
+    }
+  };
+}
+
+
