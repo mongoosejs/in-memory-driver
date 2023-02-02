@@ -19,6 +19,7 @@ describe('$operators', function() {
     await Promise.all(Object.values(mongoose.connection.models).map(M => M.deleteMany({})));
     mongoose.deleteModel(/.*/);
     delete mongoose.models.Test;
+    delete mongoose.models.Nested;
   });
 
   it('$inc', async function() {

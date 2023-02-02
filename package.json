@@ -9,11 +9,11 @@
     "eslint": "^8.20.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "mocha": "10.0.0",
-    "mongoose": "~6.4"
+    "mongoose": "git@github.com:Automattic/mongoose.git#vkarpov15/use-mongodb-node-driver-5"
   },
   "peerDependencies": {
     "bson": "^4.6.2",
-    "mongoose": "~6.4",
+    "mongoose": "~6.x",
     "sift": "16.0.0"
   }
 }
