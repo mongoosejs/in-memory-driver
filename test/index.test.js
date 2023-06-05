@@ -39,6 +39,18 @@ describe('in-memory driver', function() {
     assert.equal(docs[1].name, 'test');
   });
 
+  it('find cursor', async function() {
+    const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
+
+    await Test.create([{ name: 'test' }, { name: 'test2' }, { name: 'foo' }]);
+
+    const cursor = await Test.find({ name: /test/ }).cursor();
+    let doc = await cursor.next();
+    assert.equal(doc.name, 'test');
+    doc = await cursor.next();
+    assert.equal(doc.name, 'test2');
+  });
+
   describe('findOne', function() {
     it('works', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({ name: String }));

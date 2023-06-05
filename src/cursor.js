@@ -7,11 +7,11 @@ module.exports = class Cursor {
   }
 
   async next() {
-    if (index >= this.docs.length) {
-      return null
+    if (this.index >= this.docs.length) {
+      return null;
     }
 
-    return this.docs[index++];
+    return this.docs[this.index++];
   }
 
   async toArray() {
