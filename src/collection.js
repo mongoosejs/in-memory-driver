@@ -21,18 +21,15 @@ module.exports = class Collection extends MongooseCollection {
     return this;
   }
 
-  insertOne(doc, options, cb) {
+  async insertOne(doc, options) {
     this._documents.push(toBSON(doc));
-    cb(null);
   }
 
-  insertMany(docs, options, cb) {
+  async insertMany(docs, options) {
     this._documents = this._documents.concat(docs.map(toBSON));
-
-    return cb(null);
   }
 
-  find(query, options, cb) {
+  async find(query, options) {
     const result = this._documents.filter(sift(query));
 
     if (options && options.sort) {
@@ -49,23 +46,18 @@ module.exports = class Collection extends MongooseCollection {
 
     const cursor = new Cursor(result);
 
-    if (cb != null) {
-      cb(null, cursor);
-    }
     return cursor;
   }
 
-  findOne(query, options, cb) {
+  async findOne(query, options) {
     const doc = this._documents.find(sift(query));
     const { projection } = options || {};
     const projectedDoc = applyProjectionToDoc(doc, projection);
 
-    if (cb != null) {
-      cb(null, projectedDoc);
-    }
+    return projectedDoc;
   }
 
-  deleteMany(query, options, cb) {
+  async deleteMany(query, options) {
     const result = { deletedCount: 0 };
     const filter = sift(query);
 
@@ -79,10 +71,10 @@ module.exports = class Collection extends MongooseCollection {
     }
 
     this._documents = newDocs;
-    return cb(null, result);
+    return result;
   }
 
-  findOneAndUpdate(query, update, options, cb) {
+  async findOneAndUpdate(query, update, options) {
     let doc = this._documents.find(sift(query));
     const result = { value: null };
 
@@ -96,12 +88,10 @@ module.exports = class Collection extends MongooseCollection {
       result.value = doc;
     }
 
-    if (cb != null) {
-      return cb(null, result);
-    }
+    return result;
   }
 
-  updateOne(query, update, options, cb) {
+  async updateOne(query, update, options) {
     const doc = this._documents.find(sift(query));
 
     const result = { matchedCount: 0, modifiedCount: 0 };
@@ -112,16 +102,10 @@ module.exports = class Collection extends MongooseCollection {
       result.modifiedCount = 1;
     }
 
-    if (cb != null) {
-      return cb(null, result);
-    }
+    return result;
   }
 
-  createIndex(index, options, cb) {
-    if (cb != null) {
-      return cb(null, index);
-    }
-
+  async createIndex(index, options) {
     return;
   }
 };

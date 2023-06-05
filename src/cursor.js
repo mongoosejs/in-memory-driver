@@ -6,15 +6,15 @@ module.exports = class Cursor {
     this.index = 0;
   }
 
-  next(cb) {
+  async next() {
     if (index >= this.docs.length) {
-      return cb(null, null);
+      return null
     }
 
-    cb(null, this.docs[index++]);
+    return this.docs[index++];
   }
 
-  toArray(cb) {
-    return cb(null, this.docs);
+  async toArray() {
+    return this.docs;
   }
 };

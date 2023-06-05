@@ -11,5 +11,5 @@ module.exports = {
   Decimal128,
   ReadPreference,
   Collection,
-  getConnection: () => Connection
+  Connection
 };
