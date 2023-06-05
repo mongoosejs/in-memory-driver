@@ -254,9 +254,6 @@ function aggregate(pipeline) {
     if (command.$skip) {
       docs = docs.slice(command.$skip);
     }
-    if (command.$group) {
-  
-    }
     if (command.$sort) {
       docs.sort(function(a, b) {
         for (const key in command.$sort) {
