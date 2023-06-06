@@ -274,6 +274,7 @@ function aggregate(pipeline) {
       const unwind = [];
       const path = command.$unwind.hasOwnProperty('path') ? command.$unwind.path : typeof command.$unwind == 'string' ? command.$unwind : '';
       const preserveNullAndEmptyArrays = command.$unwind.preserveNullAndEmptyArrays ?? false;
+      const includeArrayIndex = (command.$unwind.includeArrayIndex && !command.$unwind.includeArrayIndex.startsWith('$')) ? command.$unwind.includeArrayIndex :  '';
       for (let i = 0; i < docs.length; i++) {
         const entry = docs[i];
         if (path == '') {
@@ -282,6 +283,9 @@ function aggregate(pipeline) {
         // https://www.mongodb.com/docs/manual/reference/operator/aggregation/unwind/#behaviors
         const EmptyMissingOrNull = entry[path] == null || typeof entry[path] === undefined || entry[path].length == 0;
         if ((EmptyMissingOrNull && preserveNullAndEmptyArrays) || (!EmptyMissingOrNull && !Array.isArray(entry[path]))) {
+          if (includeArrayIndex) {
+            entry[includeArrayIndex] = null;
+          }
           unwind.push(entry);
           continue;
         } else if (Array.isArray(entry[path])) {
@@ -290,6 +294,9 @@ function aggregate(pipeline) {
             for (const key in entry) {
               if (key == path) {
                 obj[key] = entry[path][index];
+                if (includeArrayIndex) {
+                  obj[includeArrayIndex] = index;
+                }
               } else {
                 obj[key] = entry[key];
               }
