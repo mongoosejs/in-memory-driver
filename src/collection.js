@@ -243,8 +243,94 @@ function aggregate(pipeline) {
     if (command.$match) {
       docs = [...docs._find(command.$match)];
     }
+    // https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#considerations
     if (command.$group) {
+      const group = [];
+      const obj = {};
+      // need to process _id better
+      if (command.$group._id == null) {
+        obj._id = null;
+      } else {
+        obj._id = command.$group._id;
+      }
+      const identifiers = getGroupKeys(docs, command.$group._id);
 
+      for (const key in command.$group) {
+        if (key == '_id') {
+          continue;
+        } else if (command.$group[key] == '$accumulator') {
+
+        } else if (command.$group[key] == '$addToSet') {
+
+        } else if (command.$group[key] == '$avg') {
+          
+        } else if (command.$group[key] == '$bottom') {
+          
+        } else if (command.$group[key] == '$bottomN') {
+          
+        } else if (command.$group[key] == '$count') {
+          if (command.$group._id == null) {
+            obj[key] = docs.length;
+          } else {
+          }
+        } else if (command.$group[key] == '$first') {
+          
+        } else if (command.$group[key] == '$firstN') {
+          
+        } else if (command.$group[key] == '$last') {
+          const index = docs.lastIndexOf(command.$group[key].$last);
+          obj[key] = docs[index];
+        } else if (command.$group[key] == '$lastN') {
+          let temp = [...docs];
+          const arr = [];
+          for (let i = 0; i < command.$group[key].$lastN.n; i++) {
+            const index = temp.lastIndexOf(command.$group[key].$lastN.input);
+            arr.push(temp[index]);
+            temp.splice(index, 1);
+          }
+          obj[key] = arr;
+        } else if (command.$group[key] == '$max') {
+          let max = 0;
+          // need to filter whatever the id is and then check against each one.
+          // case where we just want the biggest value on the property of all the docs with that property
+          for (let index = 0; index < identifiers.length; index++) {
+            const filteredDocs = docs.filter(x => x[identifiers[index]] == identifiers[index]);
+            for (let i = 0; i < filteredDocs.length; i++) {
+              if (filteredDocs[i][command.$group[key].$max] > max) {
+                max = filteredDocs[i][command.$group[key].$max]
+              }
+            }
+            obj._id = identifiers[index]; // this is not correct?
+            obj[key] = max;
+            // do we push now?
+          }
+        } else if (command.$group[key] == '$maxN') {
+          
+        } else if (command.$group[key] == '$mergeObjects') {
+          
+        } else if (command.$group[key] == '$min') {
+          
+        } else if (command.$group[key] == '$push') {
+          for (let i = 0; i < Object.keys(command.$group[key].$push).length; i++) {
+            const newObj = {};
+          }
+          obj[key] = '';
+        } else if (command.$group[key] == '$stdDevPop') {
+          
+        } else if (command.$group[key] == '$stdDevSamp') {
+          
+        } else if (command.$group[key] == '$sum') {
+          
+        } else if (command.$group[key] == '$top') {
+          
+        } else if (command.$group[key] == '$topN') {
+          
+        } else {
+          console.log(`${command.$group[key]} not a valid option. Moving on.`);
+        }
+      }
+      // or push here?
+      docs = [...group];
     }
     if (command.$project) {
       const projDocs = [];
@@ -313,10 +399,55 @@ function aggregate(pipeline) {
       docs = [...unwind];
     }
     if (command.$lookup) {
-
+      // TODO
     }
   }
   return docs;
 }
 
+/* 
+  Helper function for aggregation to get all possible values for the given property.
+  Doing so allows us to get the total times we'll need to iterate through
+  the documents to return documents with the correct identifiers.
+*/
 
+function getGroupKeys(array, groupId) {
+  if (groupId == null) return;
+  const keys = [];
+  let property = '';
+  let properties = '';
+  if (Object.keys(groupId).length == 0) { // EX:  "$item" and $item has values abc, jkl, xyz
+    property = groupId.substring(1);
+  } else { // EX: { day: { $dayOfYear: "$date"}, year: { $year: "$date" } } <= can these be different? Assume they can.
+    properties = traverseObject(groupId);
+  }
+
+  for (let i = 0; i < array.length; i++) {
+    if (properties) {
+      for (let index = 0; index < properties.length; index++) {
+        property = properties[index].substring(1); // handle $
+      }
+    }
+    if (array[i][property] && !keys.includes(array[i][property])) {
+      keys.push(property);
+    }
+  }
+  return keys; // should be [abc, jkl, xyz]
+}
+
+// should return $date for EX:  { day: { $dayOfYear: "$date"}, year: { $year: "$date" } }
+// add functionality to remove duplicates
+// return as array
+function traverseObject(obj) {
+  const keys = [];
+  Object.keys(obj).forEach(key => {
+    if (typeof obj[key] === 'object' && obj[key] !== null) {
+      traverseObject(obj[key])
+    } else {
+      keys.push(obj[key]);
+    }
+  });
+  // now remove duplicates
+  const removeDupes = new Set(keys);
+  return [...removeDupes];
+}
