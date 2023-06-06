@@ -247,7 +247,12 @@ function aggregate(pipeline) {
 
     }
     if (command.$project) {
-
+      const projDocs = [];
+      for (let i = 0; i < docs.length; i++) {
+        const doc = applyProjectionToDoc(docs[i], command.$project);
+        projDocs.push(doc);
+      }
+      docs = [...projDocs];
     }
     if (command.$limit) {
       docs = [...docs.slice(0, command.$limit)];
