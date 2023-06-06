@@ -241,6 +241,7 @@ function aggregate(pipeline) {
   let docs = [...this._documents];
   for (const command of pipeline) {
     if (command.$match) {
+      docs = [...docs._find(command.$match)];
     }
     if (command.$group) {
   
@@ -249,10 +250,10 @@ function aggregate(pipeline) {
   
     }
     if (command.$limit) {
-      docs = docs.slice(0, command.$limit);
+      docs = [...docs.slice(0, command.$limit)];
     }
     if (command.$skip) {
-      docs = docs.slice(command.$skip);
+      docs = [...docs.slice(command.$skip)];
     }
     if (command.$sort) {
       docs.sort(function(a, b) {
@@ -270,7 +271,34 @@ function aggregate(pipeline) {
       });
     }
     if (command.$unwind) {
-  
+      const unwind = [];
+      const path = command.$unwind.hasOwnProperty('path') ? command.$unwind.path : typeof command.$unwind == 'string' ? command.$unwind : '';
+      const preserveNullAndEmptyArrays = command.$unwind.preserveNullAndEmptyArrays ?? false;
+      for (let i = 0; i < docs.length; i++) {
+        const entry = docs[i];
+        if (path == '') {
+          throw new Error('Please provide valid syntax for the unwind command');
+        }
+        // https://www.mongodb.com/docs/manual/reference/operator/aggregation/unwind/#behaviors
+        const EmptyMissingOrNull = entry[path] == null || typeof entry[path] === undefined || entry[path].length == 0;
+        if ((EmptyMissingOrNull && preserveNullAndEmptyArrays) || (!EmptyMissingOrNull && !Array.isArray(entry[path]))) {
+          unwind.push(entry);
+          continue;
+        } else if (Array.isArray(entry[path])) {
+          for (let index = 0; index < entry[path].length; index++) {
+            const obj = {};
+            for (const key in entry) {
+              if (key == path) {
+                obj[key] = entry[path][index];
+              } else {
+                obj[key] = entry[key];
+              }
+            }
+            unwind.push(obj);
+          }
+        }
+        docs = [...unwind];
+      }
     }
     if (command.$lookup) {
   
