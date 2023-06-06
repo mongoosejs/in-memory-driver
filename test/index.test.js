@@ -64,7 +64,7 @@ describe('in-memory driver', function() {
       assert.equal(doc.name, 'test2');
     });
 
-    it('supports projections', async function () {
+    it('supports projections', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({ name: String, age: Number }));
 
       await Test.create([{ name: 'test', age: 29 }]);
@@ -75,7 +75,7 @@ describe('in-memory driver', function() {
       assert.strictEqual(doc.age, undefined);
     });
 
-    it('supports projections with disabled _id', async function () {
+    it('supports projections with disabled _id', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({ name: String, age: Number }));
 
       await Test.create([{ name: 'test', age: 29 }]);

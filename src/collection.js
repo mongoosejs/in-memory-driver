@@ -244,10 +244,10 @@ function aggregate(pipeline) {
       docs = [...docs._find(command.$match)];
     }
     if (command.$group) {
-  
+
     }
     if (command.$project) {
-  
+
     }
     if (command.$limit) {
       docs = [...docs.slice(0, command.$limit)];
@@ -258,12 +258,12 @@ function aggregate(pipeline) {
     if (command.$sort) {
       docs.sort(function(a, b) {
         for (const key in command.$sort) {
-          if( command.$sort.hasOwnProperty( key ) ) {
-            if( a[key] > b[key] ) {
-                return command.$sort[key];
+          if (command.$sort.hasOwnProperty(key)) {
+            if (a[key] > b[key]) {
+              return command.$sort[key];
             }
-            if( a[key] < b[key] ) {
-                return -command.$sort[key];
+            if (a[key] < b[key]) {
+              return -command.$sort[key];
             }
           }
         }
@@ -274,14 +274,14 @@ function aggregate(pipeline) {
       const unwind = [];
       const path = command.$unwind.hasOwnProperty('path') ? command.$unwind.path : typeof command.$unwind == 'string' ? command.$unwind : '';
       const preserveNullAndEmptyArrays = command.$unwind.preserveNullAndEmptyArrays ?? false;
-      const includeArrayIndex = (command.$unwind.includeArrayIndex && !command.$unwind.includeArrayIndex.startsWith('$')) ? command.$unwind.includeArrayIndex :  '';
+      const includeArrayIndex = (command.$unwind.includeArrayIndex && !command.$unwind.includeArrayIndex.startsWith('$')) ? command.$unwind.includeArrayIndex : '';
       for (let i = 0; i < docs.length; i++) {
         const entry = docs[i];
         if (path == '') {
           throw new Error('Please provide valid syntax for the unwind command');
         }
         // https://www.mongodb.com/docs/manual/reference/operator/aggregation/unwind/#behaviors
-        const EmptyMissingOrNull = entry[path] == null || typeof entry[path] === undefined || entry[path].length == 0;
+        const EmptyMissingOrNull = entry[path] == null || typeof entry[path] === 'undefined' || entry[path].length == 0;
         if ((EmptyMissingOrNull && preserveNullAndEmptyArrays) || (!EmptyMissingOrNull && !Array.isArray(entry[path]))) {
           if (includeArrayIndex) {
             entry[includeArrayIndex] = null;
@@ -308,7 +308,7 @@ function aggregate(pipeline) {
       docs = [...unwind];
     }
     if (command.$lookup) {
-  
+
     }
   }
   return docs;
