@@ -238,7 +238,7 @@ function aggregate(pipeline) {
   if (!Array.isArray(pipeline)) {
     throw new Error('Please provide an array of objects as an argument');
   }
-  let docs = this._documents;
+  let docs = [...this._documents];
   for (const command of pipeline) {
     if (command.$match) {
     }
@@ -257,12 +257,12 @@ function aggregate(pipeline) {
     if (command.$sort) {
       docs.sort(function(a, b) {
         for (const key in command.$sort) {
-          if( sort.hasOwnProperty( key ) ) {
+          if( command.$sort.hasOwnProperty( key ) ) {
             if( a[key] > b[key] ) {
-                return sort[key];
+                return command.$sort[key];
             }
             if( a[key] < b[key] ) {
-                return -sort[key];
+                return -command.$sort[key];
             }
           }
         }
