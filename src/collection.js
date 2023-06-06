@@ -304,8 +304,8 @@ function aggregate(pipeline) {
             unwind.push(obj);
           }
         }
-        docs = [...unwind];
       }
+      docs = [...unwind];
     }
     if (command.$lookup) {
   
