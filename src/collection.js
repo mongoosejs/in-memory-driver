@@ -6,13 +6,6 @@ const applyUpdate = require('./mongodb/applyUpdate');
 const sift = require('sift').default;
 const toBSON = require('./mongodb/toBSON');
 
-const mongoose = require('mongoose');
-
-mongoose.Query.prototype.cursor = function cursor() {
-  const ret = this._collection.collection._find(this._conditions, this.options);
-  return ret;
-};
-
 module.exports = class Collection extends MongooseCollection {
   constructor(name, conn, options) {
     super(name, conn, options);
@@ -36,7 +29,7 @@ module.exports = class Collection extends MongooseCollection {
     this._documents = this._documents.concat(docs.map(toBSON));
   }
 
-  _find(query, options) {
+  find(query, options, cb) {
     const result = query == null ?
       [...this._documents] :
       this._documents.filter(sift(query));
@@ -55,11 +48,11 @@ module.exports = class Collection extends MongooseCollection {
 
     const cursor = new Cursor(result);
 
-    return cursor;
-  }
+    if (cb != null) {
+      cb(null, cursor);
+    }
 
-  async find(query, options) {
-    return this._find(query, options);
+    return cursor;
   }
 
   async findOne(query, options) {
