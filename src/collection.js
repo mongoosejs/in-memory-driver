@@ -240,90 +240,159 @@ function aggregate(pipeline) {
   }
   let docs = [...this._documents];
   for (const command of pipeline) {
-    if (command.$match) {
+    if (command.$match) { // TODO: fix
       docs = [...docs._find(command.$match)];
     }
     // https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#considerations
     if (command.$group) {
       const group = [];
-      const obj = {};
-      // need to process _id better
-      if (command.$group._id == null) {
-        obj._id = null;
-      } else {
-        obj._id = command.$group._id;
-      }
-      const identifiers = getGroupKeys(docs, command.$group._id);
+      const groupKey = command.$group._id == null ? null : command.$group._id;
+      const identifiers = getGroupKeyValues(docs, groupKey);
 
       for (const key in command.$group) {
         if (key == '_id') {
           continue;
-        } else if (command.$group[key] == '$accumulator') {
+        } else if (checkKey(command.$group[key], '$accumulator')) {
 
-        } else if (command.$group[key] == '$addToSet') {
+        } else if (checkKey(command.$group[key], '$addToSet')) {
 
-        } else if (command.$group[key] == '$avg') {
+        } else if (checkKey(command.$group[key], '$avg')) {
           
-        } else if (command.$group[key] == '$bottom') {
+        } else if (checkKey(command.$group[key], '$bottom')) {
           
-        } else if (command.$group[key] == '$bottomN') {
+        } else if (checkKey(command.$group[key], '$bottomN')) {
           
-        } else if (command.$group[key] == '$count') {
+        } else if (checkKey(command.$group[key], '$count')) { // does not take any args
           if (command.$group._id == null) {
             obj[key] = docs.length;
           } else {
+            let count = 0;
+            for (let i = 0; i < identifiers.length; i++) {
+              const countDoc = {};
+              for (let j = 0; j < docs.length; j++) {
+                if (docs[j][groupKey.substring(1)] == identifiers[i]) {
+                  count++;
+                }
+              }
+              countDoc._id = identifiers[i];
+              countDoc[key] = count;
+              group.push(countDoc);
+            }
           }
-        } else if (command.$group[key] == '$first') {
+        } else if (checkKey(command.$group[key], '$first')) {
           
-        } else if (command.$group[key] == '$firstN') {
+        } else if (checkKey(command.$group[key], '$firstN')) {
           
-        } else if (command.$group[key] == '$last') {
+        } else if (checkKey(command.$group[key], '$last')) {
           const index = docs.lastIndexOf(command.$group[key].$last);
           obj[key] = docs[index];
-        } else if (command.$group[key] == '$lastN') {
+        } else if (checkKey(command.$group[key], '$$lastN')) {
           let temp = [...docs];
           const arr = [];
           for (let i = 0; i < command.$group[key].$lastN.n; i++) {
-            const index = temp.lastIndexOf(command.$group[key].$lastN.input);
+            const index = temp.lastIndexOf(command.$group[key].$lastN.input); // input can be an array, need to account for that
             arr.push(temp[index]);
             temp.splice(index, 1);
           }
           obj[key] = arr;
-        } else if (command.$group[key] == '$max') {
+        } else if (checkKey(command.$group[key], '$max')) {
           let max = 0;
+          const maxDoc = {};
           // need to filter whatever the id is and then check against each one.
           // case where we just want the biggest value on the property of all the docs with that property
-          for (let index = 0; index < identifiers.length; index++) {
-            const filteredDocs = docs.filter(x => x[identifiers[index]] == identifiers[index]);
-            for (let i = 0; i < filteredDocs.length; i++) {
-              if (filteredDocs[i][command.$group[key].$max] > max) {
-                max = filteredDocs[i][command.$group[key].$max]
+         if (groupKey == null) {
+          maxDoc._id = null;
+          if (typeof command.$group[key].$max !== 'string') { // Ex: $max: { $multiply: ["$price", "$quantity" ] }
+            // https://www.mongodb.com/docs/manual/reference/operator/aggregation/
+            opts = Object.keys(command.$group[key].$max);
+            // https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/#syntax
+            // Could either be an object or an array, need to handle both
+            if (Array.isArray(command.$group[key].$max)) {
+              for (let i = 0; i < command.$group[key].$max.length; i++) {
+                // go through each expression and prep for processing
               }
             }
-            obj._id = identifiers[index]; // this is not correct?
-            obj[key] = max;
-            // do we push now?
+            // has to be at least two arguments
+            // TODO: need to account for case where an argument is not a property but a number
+            if (opts.includes('$multiply')) {
+              const args = command.$group[key].$max.$multiply;
+              let num = 1;
+              for (let i = 0; i < docs.length; i++) {
+                for (let j = 0; j < args.length; j++) {
+                  num *= docs[i][args[j].substring(1)];
+                }
+                if (num > max) {
+                  max = num;
+                }
+                num = 1;
+              }
+            } else if (opts.includes('$add')) {
+              const args = command.$group[key].$max.$add;
+              let num = 0;
+              for (let i = 0; i < docs.length; i++) {
+                for (let j = 0; j < args.length; j++) {
+                  num += docs[i][args[j].substring(1)];
+                }
+                if (num > max) {
+                  max = num;
+                }
+                num = 0;
+              }
+            } else if (opts.includes('$subtract')) { // subtraction is picky, will only do two properties at a time. 2nd - 1st
+              let num = 0;
+              const args = command.$group[key].$max.$subtract;
+              for (let i = 0; i < docs.length; i++) {
+                num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                if (num > max) {
+                  max = num;
+                }
+              }
+            } else if (opts.includes('$divide')) { // division is picky, will only do two properties at a time. 1st/2nd
+              let num = 0;
+              const args = command.$group[key].$max.$divide;
+              // TODO: need to handle divide by zero case
+              for (let i = 0; i < docs.length; i++) {
+                num = docs[i][args[0].substring(1)] - docs[i][args[1].substring(1)];
+                if (num > max) {
+                  max = num;
+                }
+              }
+            }
+          } else {
+            for (let i = 0; i < docs.length; i++) {
+              if (docs[i][command.$group[key].$max.substring(1)] > max) {
+                max = docs[i][command.$group[key].$max]
+              }
+            }
           }
-        } else if (command.$group[key] == '$maxN') {
+          maxDoc[key] = max;
+          group.push(maxDoc);
+         } else {
           
-        } else if (command.$group[key] == '$mergeObjects') {
+         }
+          obj._id = identifiers[index]; // this is not correct?
+          obj[key] = max;
+          // do we push now?
+        } else if (checkKey(command.$group[key], '$maxN')) {
           
-        } else if (command.$group[key] == '$min') {
+        } else if (checkKey(command.$group[key], '$mergeObjects')) {
           
-        } else if (command.$group[key] == '$push') {
+        } else if (checkKey(command.$group[key], '$min')) {
+          
+        } else if (checkKey(command.$group[key], '$push')) {
           for (let i = 0; i < Object.keys(command.$group[key].$push).length; i++) {
             const newObj = {};
           }
           obj[key] = '';
-        } else if (command.$group[key] == '$stdDevPop') {
+        } else if (checkKey(command.$group[key], '$stdDevPop')) {
           
-        } else if (command.$group[key] == '$stdDevSamp') {
+        } else if (checkKey(command.$group[key], '$stdDevSamp')) {
           
-        } else if (command.$group[key] == '$sum') {
+        } else if (checkKey(command.$group[key], '$sum')) {
           
-        } else if (command.$group[key] == '$top') {
+        } else if (checkKey(command.$group[key], '$top')) {
           
-        } else if (command.$group[key] == '$topN') {
+        } else if (checkKey(command.$group[key], '$topN')) {
           
         } else {
           console.log(`${command.$group[key]} not a valid option. Moving on.`);
@@ -411,7 +480,7 @@ function aggregate(pipeline) {
   the documents to return documents with the correct identifiers.
 */
 
-function getGroupKeys(array, groupId) {
+function getGroupKeyValues(array, groupId) {
   if (groupId == null) return;
   const keys = [];
   let property = '';
@@ -450,4 +519,10 @@ function traverseObject(obj) {
   // now remove duplicates
   const removeDupes = new Set(keys);
   return [...removeDupes];
+}
+
+// given an object or object property containing an object, and a string to compare against, returns if the string is in the array
+// Ex: obj = { $max: "$quantity" } getKeys(obj, "$max") returns true
+function checkKey(obj, str) {
+  return Object.keys(obj).includes(str);
 }
