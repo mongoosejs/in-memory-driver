@@ -286,9 +286,6 @@ module.exports = class Collection extends MongooseCollection {
             } else {
             
             }
-            obj._id = identifiers[index]; // this is not correct?
-            obj[key] = max;
-            // do we push now?
           } else if (checkKey(command.$group[key], '$maxN')) {
             
           } else if (checkKey(command.$group[key], '$mergeObjects')) {
