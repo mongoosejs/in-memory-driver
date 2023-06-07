@@ -331,8 +331,7 @@ module.exports = class Collection extends MongooseCollection {
       if (command.$skip) {
         docs = [...docs.slice(command.$skip)];
       }
-      if (command.$sort) { // not done
-        // https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/
+      if (command.$sort) {
         docs.sort(function(a, b) {
           for (const key in command.$sort) {
             if (command.$sort.hasOwnProperty(key)) {
