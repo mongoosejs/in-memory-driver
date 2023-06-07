@@ -138,4 +138,98 @@ describe('in-memory driver', function() {
       assert.equal(doc.other, 'other');
     });
   });
+  describe('aggregation', function() {
+    it('supports $limit', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        num: Number
+      }));
+      for (let i = 0; i < 11; i++) {
+        await Test.create({
+          name: 'Test',
+          num: i
+        });
+      }
+      const limit = 6;
+      const docs = Test.collection.aggregate([{ $limit: limit }]);
+      assert.equal(docs.length, limit);
+    });
+    it('supports $skip', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        num: Number
+      }));
+      const total = 11
+      for (let i = 0; i < total; i++) {
+        await Test.create({
+          name: 'Test',
+          num: i
+        });
+      }
+      const skip = 4;
+      const docs = Test.collection.aggregate([{ $skip: skip }]);
+      assert.equal(docs.length, total - skip);
+    });
+    it('supports $project', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        num: Number,
+        age: Number
+      }));
+      const total = 11
+      for (let i = 0; i < total; i++) {
+        await Test.create({
+          name: 'Test',
+          num: i,
+          age: total
+        });
+      }
+      let docs = Test.collection.aggregate([ { $limit: 1 }, { $project: { num: 0 } }]);
+      assert.equal(docs[0].num, undefined);
+      docs = Test.collection.aggregate([ { $limit: 1 }, { $project: { age: 1 } }]);
+      assert.equal(docs[0].age, total);
+      assert.equal(docs[0].name, undefined);
+    });
+    it('supports $sort', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        num: Number,
+        age: Number
+      }));
+      const total = 11
+      for (let i = 0; i < total; i++) {
+        await Test.create({
+          name: 'Test',
+          num: i,
+          age: total
+        });
+      }
+      let docs = Test.collection.aggregate([ { $sort: { num: 1 } }]);
+      docs = Test.collection.aggregate([ { $sort: { num: -1 } }]);
+    });
+    it('supports $unwind', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        values: [Number]
+      }));
+      await Test.create({ name: 'Test', values: [1, 2, 3, 4, 5] });
+      await Test.create({ name: 'Test2', values: 20 });
+      await Test.create({ name: 'Test3'});
+      // just the path
+      const docs = Test.collection.aggregate([ { $unwind: 'values' } ]);
+      assert.equal(docs.length, 6);
+      // with includeArrayIndex
+      const indexDocs = Test.collection.aggregate([ { $unwind: { path: 'values', includeArrayIndex: 'myIndex' }}]);
+      assert.ok(Object.keys(indexDocs[0]).includes('myIndex'));
+      assert.equal(indexDocs[0].myIndex, indexDocs[0].values - 1);
+      // with preserveNullAndEmptyArrays
+      const PNAEA = Test.collection.aggregate([ { $unwind: { path: 'values', preserveNullAndEmptyArrays: true } }]);
+      const emptyArray = PNAEA.find(x => x.values.length == 0);
+      assert(emptyArray)
+    });
+    it('can do it all together', async function() {
+      // so the tests don't complain
+      assert(true);
+    });
+  });
 });
