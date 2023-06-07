@@ -139,6 +139,19 @@ describe('in-memory driver', function() {
     });
   });
   describe('aggregation', function() {
+    it('supports $match', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        name: String,
+        age: Number
+      }));
+      await Test.create({ name: 'Test', age: 42 });
+      await Test.create({ name: 'John', age: 10 });
+      await Test.create({ name: 'Batman', age: 26 });
+      let docs = Test.collection.aggregate([ { $match: { name: 'Batman' } }]);
+      assert.equal(docs[0].name, 'Batman');
+      docs = Test.collection.aggregate([ { $match: { $or: [{ name: 'Batman' }, { age: 10 }] } } ]);
+      assert.equal(docs.length, 2);
+    })
     it('supports $limit', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         name: String,

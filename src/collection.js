@@ -129,7 +129,8 @@ module.exports = class Collection extends MongooseCollection {
     let docs = [...this._documents];
     for (const command of pipeline) {
       if (command.$match) { // TODO: fix
-        docs = [...docs._find(command.$match)];
+        const result = docs.filter(sift(command.$match));
+        docs = [...result];
       }
       // https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#considerations
       if (command.$group) {
