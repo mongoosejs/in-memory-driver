@@ -186,6 +186,8 @@ module.exports = class Collection extends MongooseCollection {
               maxDoc._id = null;
               if (typeof command.$group[key].$max !== 'string') { // Ex: $max: { $multiply: ["$price", "$quantity" ] }
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/
+                // TODO: Fix how opts is handled. Cannot handle the example query below
+                // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] }
                 opts = Object.keys(command.$group[key].$max);
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/#syntax
                 // Could either be an object or an array, need to handle both
@@ -282,10 +284,20 @@ module.exports = class Collection extends MongooseCollection {
                 } else if (opts.includes('$subtract')) {
                   // subtraction is picky, will only do two properties at a time. 2nd - 1st
                   // Either two nums, two dates, or a date and a num. Date must be first arg in case of subtracting number from date
+                  // I think it converts dates passed in as args to milliseconds
+                  // how do we know to give back either a date or a number?
+                  // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] } <= not currently supported
                   let num = 0;
                   const args = command.$group[key].$max.$subtract;
                   for (let i = 0; i < docs.length; i++) {
-                    num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                    // num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                    if (args.every(x => typeof x == 'number')) {
+
+                    } else if (args.every(x => x instanceof Date && !isNaN(x))) {
+
+                    } else {
+
+                    }
                     if (num > max) {
                       max = num;
                     }
