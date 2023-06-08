@@ -139,6 +139,34 @@ describe('in-memory driver', function() {
     });
   });
   describe('aggregation', function() {
+    it('supports $group with $count', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        lastName: String
+      }));
+      await Test.create({ firstName: 'Alice', lastName: 'Test1' });
+      await Test.create({ firstName: 'Alice', lastName: 'Test2' });
+      await Test.create({ firstName: 'Bob', lastName: 'Test3' });
+      const docs = Test.collection.aggregate([
+        { $group: { _id: '$firstName', count: { $count: {} } } }
+      ]);
+      assert.equal(docs.length, 2);
+      assert.deepEqual(docs.map(d => d.count).sort(), [1, 2]);
+    });
+    it('supports $group with $first', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        lastName: String,
+        age: Number
+      }));
+      await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
+      await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
+      const docs = Test.collection.aggregate([
+        { $group: { _id: '$firstName', minAge: { $first: '$age' } } }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].minAge, 25);
+    });
     it('supports $match', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         name: String,
@@ -151,7 +179,8 @@ describe('in-memory driver', function() {
       assert.equal(docs[0].name, 'Batman');
       docs = Test.collection.aggregate([ { $match: { $or: [{ name: 'Batman' }, { age: 10 }] } } ]);
       assert.equal(docs.length, 2);
-    })
+      assert.deepEqual(docs.map(doc => doc.name).sort(), ['Batman', 'John']);
+    });
     it('supports $limit', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         name: String,

@@ -129,7 +129,9 @@ module.exports = class Collection extends MongooseCollection {
       if (command.$group) {
         const group = [];
         const groupKey = command.$group._id == null ? null : command.$group._id;
-        const identifiers = getGroupKeyValues(docs, groupKey);
+        const identifiers = typeof groupKey === 'string' ?
+          [groupKey.slice(1)] :
+          getGroupKeyValues(docs, groupKey);
   
         for (const key in command.$group) {
           if (key == '_id') {
@@ -145,30 +147,37 @@ module.exports = class Collection extends MongooseCollection {
           } else if (checkKey(command.$group[key], '$bottomN')) {
             
           } else if (checkKey(command.$group[key], '$count')) { // does not take any args
-            if (command.$group._id == null) {
-              obj[key] = docs.length;
-            } else {
-              let count = 0;
-              for (let i = 0; i < identifiers.length; i++) {
-                const countDoc = {};
-                for (let j = 0; j < docs.length; j++) {
-                  if (docs[j][groupKey.substring(1)] == identifiers[i]) {
-                    count++;
-                  }
+            for (const groupField of identifiers) {
+              for (const doc of docs) {
+                let groupForDoc = group.find(g => g._id === doc[groupField]);
+                if (groupForDoc == null) {
+                  groupForDoc = { _id: doc[groupField], [key]: 0 };
+                  group.push(groupForDoc);
                 }
-                countDoc._id = identifiers[i];
-                countDoc[key] = count;
-                group.push(countDoc);
+                groupForDoc[key]++;
               }
             }
           } else if (checkKey(command.$group[key], '$first')) {
-            
+            const firstField = command.$group[key].$first.slice(1);
+            for (const groupField of identifiers) {
+              for (const doc of docs) {
+                let groupForDoc = group.find(g => g._id === doc[groupField]);
+                if (groupForDoc == null) {
+                  groupForDoc = { _id: doc[groupField], [key]: [] };
+                  group.push(groupForDoc);
+                }
+                groupForDoc[key].push(doc[firstField]);
+              }
+              for (const groupForDoc of group) {
+                groupForDoc[key] = groupForDoc[key].sort()[0];
+              }
+            }
           } else if (checkKey(command.$group[key], '$firstN')) {
             
           } else if (checkKey(command.$group[key], '$last')) {
             const index = docs.lastIndexOf(command.$group[key].$last);
             obj[key] = docs[index];
-          } else if (checkKey(command.$group[key], '$$lastN')) {
+          } else if (checkKey(command.$group[key], '$lastN')) {
             let temp = [...docs];
             const arr = [];
             for (let i = 0; i < command.$group[key].$lastN.n; i++) {
