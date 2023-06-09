@@ -195,6 +195,8 @@ module.exports = class Collection extends MongooseCollection {
               maxDoc._id = null;
               if (typeof command.$group[key].$max !== 'string') { // Ex: $max: { $multiply: ["$price", "$quantity" ] }
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/
+                // TODO: Fix how opts is handled. Cannot handle the example query below
+                // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] }
                 opts = Object.keys(command.$group[key].$max);
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/#syntax
                 // Could either be an object or an array, need to handle both
@@ -226,17 +228,60 @@ module.exports = class Collection extends MongooseCollection {
                   // if one arg is a date, treats the other arg as milliseconds to add to the date
                   // need to check which arg is a date, whether it be something passed or the property on the docs.
                   const args = command.$group[key].$max.$add;
+                  const dateArg = args.filter(x => x instanceof Date);
                   let num = 0;
-                  if (false) {
+                  if (dateArg.length > 1) {
                     throw new Error('$add only supports 1 date');
-                  } else if (false) {
-                  } else {
+                  } else if (dateArg.length == 1) {
+                    // check if valid date
+                    const date = args.find(x => x instanceof Date);
+                    if (!isNaN(date)) {
+                      throw new Error('Not a valid date');
+                    }
+
+                  } else { // no args passed were raw dates, still need to check for dates here
+                    // its two different processes if an arg is a date, need to do an initial check
+                    const props = args.filter(x => typeof x == 'string');
+                    let dateProp = '';
+                    // should iterate through all the docs just incase the first doc is missing the property or has a missing value.
+                    for (let index = 0; index < docs.length; index++) {
+                      for (let i = 0; i < props.length; i++); {
+                        const isDate = (docs[index][props[i].substring(1)] instanceof Date && !isNaN(docs[index][props[i].substring(1)])) || // valid date
+                                       (typeof docs[index][props[i].substring(1)] == 'string' && !Number.isNaN(Date.parse(docs[index][props[i].substring(1)]))) || // date string
+                                       (typeof docs[index][props[i].substring(1)] == 'number'); // assume if it is a number then it is the date in milliseconds
+                        // this prop is a date, all other values will be considered milliseconds to add to it.
+                        if (isDate) {
+                          // designate the prop as the defacto date, remove it from the args, then treat the args whether num or prop strings as milliseconds
+                          dateProp = props[i];
+                          const dateIndex = args.findIndex(x => x == props[i]);
+                          args.splice(dateIndex, 1);
+                          break;
+                        }
+                      }
+                    }
                     for (let i = 0; i < docs.length; i++) {
                       for (let j = 0; j < args.length; j++) {
                         if (typeof args[j] == 'number') {
                           num += args[j];
-                        } else if (typeof args[j] == 'string' && docs[i][args[j].substring(1)] == 'number') {
-                          num += docs[i][args[j].substring(1)];
+                        } else if (typeof args[j] == 'string') {
+                            if (dateProp) {
+                              if (docs[i][args[j].substring(1)] instanceof Date && !isNaN(docs[i][args[j].substring(1)])) { // valid date
+                                num = docs[i][args[j].substring(1)].getTime() + num;
+                              } else if (typeof docs[i][args[j].substring(1)] == 'string' && !Number.isNaN(Date.parse(docs[i][args[j].substring(1)]))) { // date string
+                                num = Date.parse(docs[i][args[j].substring(1)]) + num;
+                              }
+                            } else {
+                              num += docs[i][args[j].substring(1)];
+                            }
+                        }
+                      }
+                      if (dateProp) {
+                        if (docs[i][dateProp.substring(1)] instanceof Date && !isNaN(docs[i][dateProp.substring(1)])) { // valid date
+                          num = docs[i][dateProp.substring(1)].getTime() + num;
+                        } else if (typeof docs[i][dateProp.substring(1)] == 'string' && !Number.isNaN(Date.parse(docs[i][dateProp.substring(1)]))) { // date string
+                          num = Date.parse(docs[i][dateProp.substring(1)]) + num;
+                        } else { // property is a number
+                          num = docs[i][dateProp.substring(1)] + num;
                         }
                       }
                       if (num > max) {
@@ -248,10 +293,20 @@ module.exports = class Collection extends MongooseCollection {
                 } else if (opts.includes('$subtract')) {
                   // subtraction is picky, will only do two properties at a time. 2nd - 1st
                   // Either two nums, two dates, or a date and a num. Date must be first arg in case of subtracting number from date
+                  // I think it converts dates passed in as args to milliseconds
+                  // how do we know to give back either a date or a number?
+                  // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] } <= not currently supported
                   let num = 0;
                   const args = command.$group[key].$max.$subtract;
                   for (let i = 0; i < docs.length; i++) {
-                    num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                    // num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                    if (args.every(x => typeof x == 'number')) {
+
+                    } else if (args.every(x => x instanceof Date && !isNaN(x))) {
+
+                    } else {
+
+                    }
                     if (num > max) {
                       max = num;
                     }
@@ -277,7 +332,7 @@ module.exports = class Collection extends MongooseCollection {
                     }
                   }
                 }
-              } else {
+              } else { // { $max: "$quantity" }
                 for (let i = 0; i < docs.length; i++) {
                   if (docs[i][command.$group[key].$max.substring(1)] > max) {
                     max = docs[i][command.$group[key].$max]
