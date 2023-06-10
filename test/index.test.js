@@ -167,6 +167,48 @@ describe('in-memory driver', function() {
       assert.equal(docs.length, 1);
       assert.equal(docs[0].minAge, 25);
     });
+    it('supports $group with $last', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        lastName: String,
+        age: Number
+      }));
+      await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
+      await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
+      const docs = Test.collection.aggregate([
+        { $group: { _id: '$firstName', lastAge: { $last: '$age' } } }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].lastAge, 30);
+    });
+    it('supports $group with $max', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        lastName: String,
+        age: Number
+      }));
+      await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
+      await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
+      const docs = Test.collection.aggregate([
+        { $group: { maxAge: { $max: '$age' } } }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].maxAge, 30);
+    });
+    it('supports $group with $max and multiply', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        a: Number,
+        b: Number
+      }));
+      await Test.create({ firstName: 'Alice', a: 10, b: 5 });
+      await Test.create({ firstName: 'Alice', a: 8, b: 4 });
+      const docs = Test.collection.aggregate([
+        { $group: { max: { $max: { $multiply: ['$a', '$b'] } } } }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.equal(docs[0].max, 50);
+    });
     it('supports $match', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         name: String,

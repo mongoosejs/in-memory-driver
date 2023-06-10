@@ -176,8 +176,20 @@ module.exports = class Collection extends MongooseCollection {
           } else if (checkKey(command.$group[key], '$firstN')) {
             
           } else if (checkKey(command.$group[key], '$last')) {
-            const index = docs.lastIndexOf(command.$group[key].$last);
-            obj[key] = docs[index];
+            const lastField = command.$group[key].$last.slice(1);
+            for (const groupField of identifiers) {
+              for (const doc of docs) {
+                let groupForDoc = group.find(g => g._id === doc[groupField]);
+                if (groupForDoc == null) {
+                  groupForDoc = { _id: doc[groupField], [key]: [] };
+                  group.push(groupForDoc);
+                }
+                groupForDoc[key].push(doc[lastField]);
+              }
+              for (const groupForDoc of group) {
+                groupForDoc[key] = groupForDoc[key][groupForDoc[key].length - 1];
+              }
+            }
           } else if (checkKey(command.$group[key], '$lastN')) {
             let temp = [...docs];
             const arr = [];
@@ -198,7 +210,7 @@ module.exports = class Collection extends MongooseCollection {
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/
                 // TODO: Fix how opts is handled. Cannot handle the example query below
                 // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] }
-                opts = Object.keys(command.$group[key].$max);
+                let opts = Object.keys(command.$group[key].$max);
                 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/#syntax
                 // Could either be an object or an array, need to handle both
                 if (Array.isArray(command.$group[key].$max)) {
@@ -406,8 +418,8 @@ module.exports = class Collection extends MongooseCollection {
                 }
               } else { // { $max: "$quantity" }
                 for (let i = 0; i < docs.length; i++) {
-                  if (docs[i][command.$group[key].$max.substring(1)] > max) {
-                    max = docs[i][command.$group[key].$max]
+                  if (compareValues(docs[i][command.$group[key].$max.slice(1)], max) > 0) {
+                    max = docs[i][command.$group[key].$max.slice(1)];
                   }
                 }
               }
