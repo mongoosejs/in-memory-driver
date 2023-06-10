@@ -119,6 +119,7 @@ module.exports = class Collection extends MongooseCollection {
     if (!Array.isArray(pipeline)) {
       throw new Error('Please provide an array of objects as an argument');
     }
+
     let docs = [...this._documents];
     for (const command of pipeline) {
       if (command.$match) { // TODO: fix
@@ -207,6 +208,7 @@ module.exports = class Collection extends MongooseCollection {
                 }
                 // has to be at least two arguments
                 // TODO: address comments
+                // this.conn.models[this.modelName].schema
                 if (opts.includes('$multiply')) { // args have to either be numbers or a property that resolves to a number
                   const args = command.$group[key].$max.$multiply;
                   let num = 1;
@@ -292,24 +294,94 @@ module.exports = class Collection extends MongooseCollection {
                   }
                 } else if (opts.includes('$subtract')) {
                   // subtraction is picky, will only do two properties at a time. 2nd - 1st
-                  // Either two nums, two dates, or a date and a num. Date must be first arg in case of subtracting number from date
-                  // I think it converts dates passed in as args to milliseconds
-                  // how do we know to give back either a date or a number?
-                  // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] } <= not currently supported
+                  // Example query { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] } <= not currently supported on in-memory-driver
                   let num = 0;
                   const args = command.$group[key].$max.$subtract;
-                  for (let i = 0; i < docs.length; i++) {
-                    // num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
-                    if (args.every(x => typeof x == 'number')) {
-
-                    } else if (args.every(x => x instanceof Date && !isNaN(x))) {
-
+                  // Either two nums, two dates, or a date and a num. Date must be first arg in case of subtracting number from date
+                  // date - num results in a date string
+                  // if its two dates, returns the total milliseconds
+                  // first, check if any of the arguments are strings/properties on a doc
+                  let first = '';
+                  if (typeof args[0] == 'string') {
+                    // if they are, determine if what it resolves to is valid for this operation
+                    if (getPathType(this.conn, this.modelName, args[0].substring(1)) == 'Number') { // first arg resolves to a number
+                      first = 'Number'
+                    } else if (getPathType(this.conn, this.modelName, args[0].substring(1)) == 'Date') { // first arg resolves to a date
+                      first = 'Date'
                     } else {
+                      // does not resolve to anything valid for this operation
+                      throw new Error('arguments passed must either be a number, a date, or resolve to those values');
+                    }
+                  } else if (typeof args[0] == 'number') {
+                    first = 'Number'
+                  } else if (args[0] instanceof Date && !isNaN(args[0])) {
+                    first = 'Date'
+                  } else {
+                    // check if its a nested operation, i.e. { $subtract: [ { $add: [ "$price", "$fee" ] }, "$discount" ] }, otherwise not valid
+                  }
+                  // where the math happens
+                  if (typeof args[1] == 'string') { // second arg is string, check what it resolves to.
+                    if (getPathType(this.conn, this.modelName, args[1].substring(1)) == 'Date') { // resolves to date
+                      if (first == 'Date') { // subtracting two dates
+                        for (let i = 0; i < docs.length; i++) {
+                          if (typeof args[0] == 'string') {
+                            num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)];
+                          } else {
+                            num = docs[i][args[1].substring(1)] - args[0]; // convert to milli?
+                          }
+                          if (num > max) {
+                            max = num;
+                          }
+                        }
 
+                      } else {
+                        throw new Error('Date must be the first argument when subtracting');
+                      }
+                    } else if (getPathType(this.conn, this.modelName, args[1].substring(1)) == 'Number') { // resolves to number
+                      if (first == 'Date') { // number - date
+                        // while this should return a date string, because this is in a max operation it only matters who has the more milliseconds.
+                        for (let i = 0; i < docs.length; i++) {
+                          if (typeof args[0] == 'string') {
+                            num = docs[i][args[1].substring(1)] - docs[i][args[0].substring(1)]
+                          } else {
+                            num = docs[i][args[1].substring(1)] - args[0];
+                          }
+                          if (num > max) {
+                            max = num;
+                          }
+                        }
+                      }
+                    } else {
+                      throw new Error('arguments passed must either be a number, a date, or resolve to those values');
                     }
-                    if (num > max) {
-                      max = num;
+                  } else if (args[1] instanceof Date && !isNaN(args[1])) { // second arg is a raw date
+                    if (first == 'Number') {
+                      throw new Error('Date must be the first argument when subtracting a number from a date');
+                    } else if (first == 'Date') { // date - date
+                      for (let i = 0; i < docs.length; i ++) {
+                        if (typeof args[0] == 'string') {
+                          num = args[1] - docs[i][args[0].substring(1)];
+                        } else {
+                          num = args[1] - args[0];
+                        }
+                        if (num > max) {
+                          max = num;
+                        }
+                      }
                     }
+                  } else if (typeof args[1] == 'number') { // second arg is number
+                    for (let i = 0; i < docs.length; i++) {
+                      if (typeof args[0] == 'string') {
+                        num = args[1] - docs[i][args[0].substring(1)] ;
+                      } else {
+                        num = args[1] - args[0];
+                      }
+                      if (num > max) {
+                        max = num;
+                      }
+                    }
+                  } else { // nested operation
+
                   }
                 } else if (opts.includes('$divide')) {
                   // division is picky, will only do two properties at a time. 1st/2nd
@@ -608,4 +680,9 @@ function traverseObject(obj) {
 // Ex: obj = { $max: "$quantity" } getKeys(obj, "$max") returns true
 function checkKey(obj, str) {
   return Object.keys(obj).includes(str);
+}
+
+// given the connection, collection name, determines the path type of the property
+function getPathType(connection, collectionName, prop) {
+  return connection.models[collectionName].schema.paths[prop].instance;
 }
