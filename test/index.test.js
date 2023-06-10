@@ -167,6 +167,25 @@ describe('in-memory driver', function() {
       assert.equal(docs.length, 1);
       assert.equal(docs[0].minAge, 25);
     });
+    it('supports $group with $firstN', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        age: Number
+      }));
+      await Test.create({ firstName: 'Alice', age: 25 });
+      await Test.create({ firstName: 'Alice', age: 30 });
+      await Test.create({ firstName: 'Alice', age: 22 });
+      const docs = Test.collection.aggregate([
+        {
+          $group: {
+            _id: '$firstName',
+            ages: { $firstN: { input: '$age', n: 2 } }
+          }
+        }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.deepEqual(docs[0].ages, [25, 30]);
+    });
     it('supports $group with $last', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         firstName: String,

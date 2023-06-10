@@ -3,8 +3,11 @@
 const Cursor = require('./cursor');
 const MongooseCollection = require('mongoose/lib/collection');
 const applyUpdate = require('./mongodb/applyUpdate');
+const countAccumulator = require('./aggregation/countAccumulator');
 const sift = require('sift').default;
 const toBSON = require('./mongodb/toBSON');
+const firstAccumulator = require('./aggregation/firstAccumulator');
+const firstNAccumulator = require('./aggregation/firstNAccumulator');
 
 module.exports = class Collection extends MongooseCollection {
   constructor(name, conn, options) {
@@ -129,10 +132,7 @@ module.exports = class Collection extends MongooseCollection {
       // https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#considerations
       if (command.$group) {
         const group = [];
-        const groupKey = command.$group._id == null ? null : command.$group._id;
-        const identifiers = typeof groupKey === 'string' ?
-          [groupKey.slice(1)] :
-          getGroupKeyValues(docs, groupKey);
+        const groupKey = command.$group._id == null ? null : command.$group._id.slice(1);
   
         for (const key in command.$group) {
           if (key == '_id') {
@@ -148,47 +148,23 @@ module.exports = class Collection extends MongooseCollection {
           } else if (checkKey(command.$group[key], '$bottomN')) {
             
           } else if (checkKey(command.$group[key], '$count')) { // does not take any args
-            for (const groupField of identifiers) {
-              for (const doc of docs) {
-                let groupForDoc = group.find(g => g._id === doc[groupField]);
-                if (groupForDoc == null) {
-                  groupForDoc = { _id: doc[groupField], [key]: 0 };
-                  group.push(groupForDoc);
-                }
-                groupForDoc[key]++;
-              }
-            }
+            countAccumulator(docs, group, groupKey, key);
           } else if (checkKey(command.$group[key], '$first')) {
-            const firstField = command.$group[key].$first.slice(1);
-            for (const groupField of identifiers) {
-              for (const doc of docs) {
-                let groupForDoc = group.find(g => g._id === doc[groupField]);
-                if (groupForDoc == null) {
-                  groupForDoc = { _id: doc[groupField], [key]: [] };
-                  group.push(groupForDoc);
-                }
-                groupForDoc[key].push(doc[firstField]);
-              }
-              for (const groupForDoc of group) {
-                groupForDoc[key] = groupForDoc[key].sort()[0];
-              }
-            }
+            firstAccumulator(docs, group, groupKey, key, command.$group[key].$first);
           } else if (checkKey(command.$group[key], '$firstN')) {
-            
+            firstNAccumulator(docs, group, groupKey, key, command.$group[key].$firstN);
           } else if (checkKey(command.$group[key], '$last')) {
             const lastField = command.$group[key].$last.slice(1);
-            for (const groupField of identifiers) {
-              for (const doc of docs) {
-                let groupForDoc = group.find(g => g._id === doc[groupField]);
-                if (groupForDoc == null) {
-                  groupForDoc = { _id: doc[groupField], [key]: [] };
-                  group.push(groupForDoc);
-                }
-                groupForDoc[key].push(doc[lastField]);
+            for (const doc of docs) {
+              let groupForDoc = group.find(g => g._id === doc[groupKey]);
+              if (groupForDoc == null) {
+                groupForDoc = { _id: doc[groupKey], [key]: [] };
+                group.push(groupForDoc);
               }
-              for (const groupForDoc of group) {
-                groupForDoc[key] = groupForDoc[key][groupForDoc[key].length - 1];
-              }
+              groupForDoc[key].push(doc[lastField]);
+            }
+            for (const groupForDoc of group) {
+              groupForDoc[key] = groupForDoc[key][groupForDoc[key].length - 1];
             }
           } else if (checkKey(command.$group[key], '$lastN')) {
             let temp = [...docs];
