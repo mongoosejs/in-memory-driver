@@ -3,11 +3,14 @@
 const Cursor = require('./cursor');
 const MongooseCollection = require('mongoose/lib/collection');
 const applyUpdate = require('./mongodb/applyUpdate');
+const compareValues = require('./mongodb/compareValues');
 const countAccumulator = require('./aggregation/countAccumulator');
 const sift = require('sift').default;
+const sort = require('./mongodb/sort');
 const toBSON = require('./mongodb/toBSON');
 const firstAccumulator = require('./aggregation/firstAccumulator');
 const firstNAccumulator = require('./aggregation/firstNAccumulator');
+const bottomAccumulator = require('./aggregation/bottomAccumulator');
 
 module.exports = class Collection extends MongooseCollection {
   constructor(name, conn, options) {
@@ -144,7 +147,7 @@ module.exports = class Collection extends MongooseCollection {
           } else if (checkKey(command.$group[key], '$avg')) {
             
           } else if (checkKey(command.$group[key], '$bottom')) {
-            
+            bottomAccumulator(docs, group, groupKey, key, command.$group[key].$bottom);
           } else if (checkKey(command.$group[key], '$bottomN')) {
             
           } else if (checkKey(command.$group[key], '$count')) { // does not take any args
@@ -447,19 +450,7 @@ module.exports = class Collection extends MongooseCollection {
         docs = [...docs.slice(command.$skip)];
       }
       if (command.$sort) {
-        docs.sort(function(a, b) {
-          for (const key in command.$sort) {
-            if (command.$sort.hasOwnProperty(key)) {
-              if (a[key] > b[key]) {
-                return command.$sort[key];
-              }
-              if (a[key] < b[key]) {
-                return -command.$sort[key];
-              }
-            }
-          }
-          return 0;
-        });
+        docs.sort(sort(command.$sort));
       }
       if (command.$unwind) {
         const unwind = [];
@@ -505,70 +496,6 @@ module.exports = class Collection extends MongooseCollection {
     return docs;
   }
 };
-
-function getBSONType(val) {
-  if (typeof val === 'number') {
-    return 1;
-  }
-  if (typeof val === 'string') {
-    return 2;
-  }
-  if (typeof val === 'object' &&
-      val != null &&
-      val._bsontype == null &&
-      !Buffer.isBuffer(val) &&
-      !Array.isArray(val) &&
-      !(val instanceof Date) &&
-      !(val instanceof RegExp)) {
-    return 3;
-  }
-  if (Array.isArray(val)) {
-    return 4;
-  }
-  if (Buffer.isBuffer(val)) {
-    return 5;
-  }
-  if (val === undefined) {
-    return 6;
-  }
-  if (val._bsontype === 'ObjectId') {
-    return 7;
-  }
-  if (val === false) {
-    return 8;
-  }
-  if (val === true) {
-    return 9;
-  }
-  if (val instanceof Date) {
-    return 10;
-  }
-  if (val === null) {
-    return 11;
-  }
-  if (val instanceof RegExp) {
-    return 12;
-  }
-}
-
-function compareValues(a, b, descending) {
-  if (a === b) {
-    return 0;
-  }
-
-  const bsonTypeOfA = getBSONType(a);
-  const bsonTypeOfB = getBSONType(b);
-
-  if (bsonTypeOfA !== bsonTypeOfB) {
-    return descending ? bsonTypeOfB - bsonTypeOfA : bsonTypeOfA - bsonTypeOfB;
-  }
-
-  if (a < b) {
-    return descending ? 1 : -1;
-  } else {
-    return descending ? -1 : 1;
-  }
-}
 
 function applyProjectionToDoc(doc, projection) {
   if (!projection || !Object.keys(projection).length) {

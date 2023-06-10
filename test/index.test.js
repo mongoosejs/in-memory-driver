@@ -153,6 +153,25 @@ describe('in-memory driver', function() {
       assert.equal(docs.length, 2);
       assert.deepEqual(docs.map(d => d.count).sort(), [1, 2]);
     });
+    it('supports $group with $bottom', async function() {
+      const Test = mongoose.model('Test', mongoose.Schema({
+        firstName: String,
+        age: Number
+      }));
+      await Test.create({ firstName: 'Alice', age: 25 });
+      await Test.create({ firstName: 'Alice', age: 30 });
+      await Test.create({ firstName: 'Alice', age: 22 });
+      const docs = Test.collection.aggregate([
+        {
+          $group: {
+            _id: '$firstName',
+            ages: { $firstN: { input: '$age', n: 2 } }
+          }
+        }
+      ]);
+      assert.equal(docs.length, 1);
+      assert.deepEqual(docs[0].ages, [25, 30]);
+    });
     it('supports $group with $first', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
         firstName: String,
