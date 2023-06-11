@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const aggregate = require('../src/mongodb/aggregate');
 const mongoose = require('mongoose');
 
 mongoose.setDriver(require('../'));
@@ -147,30 +148,11 @@ describe('in-memory driver', function() {
       await Test.create({ firstName: 'Alice', lastName: 'Test1' });
       await Test.create({ firstName: 'Alice', lastName: 'Test2' });
       await Test.create({ firstName: 'Bob', lastName: 'Test3' });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         { $group: { _id: '$firstName', count: { $count: {} } } }
       ]);
       assert.equal(docs.length, 2);
       assert.deepEqual(docs.map(d => d.count).sort(), [1, 2]);
-    });
-    it('supports $group with $bottom', async function() {
-      const Test = mongoose.model('Test', mongoose.Schema({
-        firstName: String,
-        age: Number
-      }));
-      await Test.create({ firstName: 'Alice', age: 25 });
-      await Test.create({ firstName: 'Alice', age: 30 });
-      await Test.create({ firstName: 'Alice', age: 22 });
-      const docs = Test.collection.aggregate([
-        {
-          $group: {
-            _id: '$firstName',
-            ages: { $firstN: { input: '$age', n: 2 } }
-          }
-        }
-      ]);
-      assert.equal(docs.length, 1);
-      assert.deepEqual(docs[0].ages, [25, 30]);
     });
     it('supports $group with $first', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
@@ -180,7 +162,7 @@ describe('in-memory driver', function() {
       }));
       await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
       await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         { $group: { _id: '$firstName', minAge: { $first: '$age' } } }
       ]);
       assert.equal(docs.length, 1);
@@ -194,7 +176,7 @@ describe('in-memory driver', function() {
       await Test.create({ firstName: 'Alice', age: 25 });
       await Test.create({ firstName: 'Alice', age: 30 });
       await Test.create({ firstName: 'Alice', age: 22 });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         {
           $group: {
             _id: '$firstName',
@@ -213,7 +195,7 @@ describe('in-memory driver', function() {
       }));
       await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
       await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         { $group: { _id: '$firstName', lastAge: { $last: '$age' } } }
       ]);
       assert.equal(docs.length, 1);
@@ -227,7 +209,7 @@ describe('in-memory driver', function() {
       }));
       await Test.create({ firstName: 'Alice', lastName: 'Test1', age: 25 });
       await Test.create({ firstName: 'Alice', lastName: 'Test2', age: 30 });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         { $group: { maxAge: { $max: '$age' } } }
       ]);
       assert.equal(docs.length, 1);
@@ -241,7 +223,7 @@ describe('in-memory driver', function() {
       }));
       await Test.create({ firstName: 'Alice', a: 10, b: 5 });
       await Test.create({ firstName: 'Alice', a: 8, b: 4 });
-      const docs = Test.collection.aggregate([
+      const docs = aggregate.call(Test.collection, [
         { $group: { max: { $max: { $multiply: ['$a', '$b'] } } } }
       ]);
       assert.equal(docs.length, 1);
@@ -255,9 +237,9 @@ describe('in-memory driver', function() {
       await Test.create({ name: 'Test', age: 42 });
       await Test.create({ name: 'John', age: 10 });
       await Test.create({ name: 'Batman', age: 26 });
-      let docs = Test.collection.aggregate([ { $match: { name: 'Batman' } }]);
+      let docs = aggregate.call(Test.collection, [{ $match: { name: 'Batman' } }]);
       assert.equal(docs[0].name, 'Batman');
-      docs = Test.collection.aggregate([ { $match: { $or: [{ name: 'Batman' }, { age: 10 }] } } ]);
+      docs = aggregate.call(Test.collection, [{ $match: { $or: [{ name: 'Batman' }, { age: 10 }] } }]);
       assert.equal(docs.length, 2);
       assert.deepEqual(docs.map(doc => doc.name).sort(), ['Batman', 'John']);
     });
@@ -273,7 +255,7 @@ describe('in-memory driver', function() {
         });
       }
       const limit = 6;
-      const docs = Test.collection.aggregate([{ $limit: limit }]);
+      const docs = aggregate.call(Test.collection, [{ $limit: limit }]);
       assert.equal(docs.length, limit);
     });
     it('supports $skip', async function() {
@@ -281,7 +263,7 @@ describe('in-memory driver', function() {
         name: String,
         num: Number
       }));
-      const total = 11
+      const total = 11;
       for (let i = 0; i < total; i++) {
         await Test.create({
           name: 'Test',
@@ -289,7 +271,7 @@ describe('in-memory driver', function() {
         });
       }
       const skip = 4;
-      const docs = Test.collection.aggregate([{ $skip: skip }]);
+      const docs = aggregate.call(Test.collection, [{ $skip: skip }]);
       assert.equal(docs.length, total - skip);
     });
     it('supports $project', async function() {
@@ -298,7 +280,7 @@ describe('in-memory driver', function() {
         num: Number,
         age: Number
       }));
-      const total = 11
+      const total = 11;
       for (let i = 0; i < total; i++) {
         await Test.create({
           name: 'Test',
@@ -306,9 +288,9 @@ describe('in-memory driver', function() {
           age: total
         });
       }
-      let docs = Test.collection.aggregate([ { $limit: 1 }, { $project: { num: 0 } }]);
+      let docs = aggregate.call(Test.collection, [{ $limit: 1 }, { $project: { num: 0 } }]);
       assert.equal(docs[0].num, undefined);
-      docs = Test.collection.aggregate([ { $limit: 1 }, { $project: { age: 1 } }]);
+      docs = aggregate.call(Test.collection, [{ $limit: 1 }, { $project: { age: 1 } }]);
       assert.equal(docs[0].age, total);
       assert.equal(docs[0].name, undefined);
     });
@@ -318,7 +300,7 @@ describe('in-memory driver', function() {
         num: Number,
         age: Number
       }));
-      const total = 11
+      const total = 11;
       for (let i = 0; i < total; i++) {
         await Test.create({
           name: 'Test',
@@ -326,8 +308,8 @@ describe('in-memory driver', function() {
           age: total
         });
       }
-      let docs = Test.collection.aggregate([ { $sort: { num: 1 } }]);
-      docs = Test.collection.aggregate([ { $sort: { num: -1 } }]);
+      let docs = aggregate.call(Test.collection, [{ $sort: { num: 1 } }]);
+      docs = aggregate.call(Test.collection, [{ $sort: { num: -1 } }]);
     });
     it('supports $unwind', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({
@@ -336,18 +318,18 @@ describe('in-memory driver', function() {
       }));
       await Test.create({ name: 'Test', values: [1, 2, 3, 4, 5] });
       await Test.create({ name: 'Test2', values: 20 });
-      await Test.create({ name: 'Test3'});
+      await Test.create({ name: 'Test3' });
       // just the path
-      const docs = Test.collection.aggregate([ { $unwind: 'values' } ]);
+      const docs = aggregate.call(Test.collection, [{ $unwind: 'values' }]);
       assert.equal(docs.length, 6);
       // with includeArrayIndex
-      const indexDocs = Test.collection.aggregate([ { $unwind: { path: 'values', includeArrayIndex: 'myIndex' }}]);
+      const indexDocs = aggregate.call(Test.collection, [{ $unwind: { path: 'values', includeArrayIndex: 'myIndex' } }]);
       assert.ok(Object.keys(indexDocs[0]).includes('myIndex'));
       assert.equal(indexDocs[0].myIndex, indexDocs[0].values - 1);
       // with preserveNullAndEmptyArrays
-      const PNAEA = Test.collection.aggregate([ { $unwind: { path: 'values', preserveNullAndEmptyArrays: true } }]);
+      const PNAEA = aggregate.call(Test.collection, [{ $unwind: { path: 'values', preserveNullAndEmptyArrays: true } }]);
       const emptyArray = PNAEA.find(x => x.values.length == 0);
-      assert(emptyArray)
+      assert(emptyArray);
     });
     it('can do it all together', async function() {
       // so the tests don't complain

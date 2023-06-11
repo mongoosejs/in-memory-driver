@@ -13,4 +13,4 @@ module.exports = function firstAccumulator(inputDocs, outputDocs, groupField, ke
   for (const groupForDoc of outputDocs) {
     groupForDoc[key] = groupForDoc[key][0];
   }
-}
+};

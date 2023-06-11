@@ -13,4 +13,4 @@ module.exports = function sort(spec) {
     }
     return 0;
   };
-}
+};

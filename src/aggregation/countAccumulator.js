@@ -9,4 +9,4 @@ module.exports = function countAccumulator(inputDocs, outputDocs, groupField, ke
     }
     groupForDoc[key]++;
   }
-}
+};

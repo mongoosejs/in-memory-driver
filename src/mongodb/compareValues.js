@@ -17,7 +17,7 @@ module.exports = function compareValues(a, b, descending) {
   } else {
     return descending ? -1 : 1;
   }
-}
+};
 
 function getBSONType(val) {
   if (typeof val === 'number') {
