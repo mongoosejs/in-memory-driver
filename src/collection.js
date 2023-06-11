@@ -51,7 +51,11 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   async findOne(query, options) {
-    const doc = this._documents.find(sift(query));
+    let docs = this._documents;
+    if (options && options.sort) {
+      docs = [...docs].sort(sort(options.sort));
+    }
+    const doc = docs.find(sift(query));
     const { projection } = options || {};
     const projectedDoc = applyProjectionToDoc(doc, projection);
 
