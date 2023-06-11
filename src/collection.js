@@ -38,15 +38,7 @@ module.exports = class Collection extends MongooseCollection {
       this._documents.filter(sift(query));
 
     if (options && options.sort) {
-      result.sort((doc1, doc2) => {
-        for (const key of Object.keys(options.sort)) {
-          const res = compareValues(doc1[key], doc2[key], options.sort[key] < 0);
-          if (res === 0) {
-            continue;
-          }
-          return res;
-        }
-      });
+      result.sort(sort(options.sort));
     }
 
     const cursor = new Cursor(result);

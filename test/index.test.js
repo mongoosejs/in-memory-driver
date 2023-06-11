@@ -52,6 +52,35 @@ describe('in-memory driver', function() {
     assert.equal(doc.name, 'test2');
   });
 
+  it('find with sort', async function() {
+    const Test = mongoose.model('Test', mongoose.Schema({
+      name: String,
+      nested: { age: Number },
+      docArr: [{ tag: String }]
+    }));
+
+    await Test.create([
+      { name: 'test', nested: { age: 25 }, docArr: [{ tag: 'aa' }] },
+      { name: 'test2', nested: { age: 22 }, docArr: [{ tag: 'bb' }] }
+    ]);
+
+    let docs = await Test.find().sort({ 'nested.age': 1 });
+    assert.equal(docs.length, 2);
+    assert.deepStrictEqual(docs.map(doc => doc.nested.age), [22, 25]);
+
+    docs = await Test.find().sort({ 'nested.age': -1 });
+    assert.equal(docs.length, 2);
+    assert.deepStrictEqual(docs.map(doc => doc.nested.age), [25, 22]);
+
+    docs = await Test.find().sort({ 'docArr.0.tag': -1 });
+    assert.equal(docs.length, 2);
+    assert.deepStrictEqual(docs.map(doc => doc.docArr[0].tag), ['bb', 'aa']);
+
+    docs = await Test.find().sort({ 'docArr.0.tag': 1 });
+    assert.equal(docs.length, 2);
+    assert.deepStrictEqual(docs.map(doc => doc.docArr[0].tag), ['aa', 'bb']);
+  });
+
   describe('findOne', function() {
     it('works', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({ name: String }));
