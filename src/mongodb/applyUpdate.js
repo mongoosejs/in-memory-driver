@@ -26,9 +26,17 @@ module.exports = function applyUpdate(obj, update) {
     for (const key of Object.keys(update.$push)) {
       const arr = mpath.get(key, obj);
       if (Array.isArray(arr)) {
-        arr.push(update.$push[key]);
+        if (update.$push[key] && update.$push[key].$each) {
+          arr.push(...update.$push[key].$each);
+        } else {
+          arr.push(update.$push[key]);
+        }
       } else {
-        mpath.set(key, [update.$push[key]], obj);
+        if (update.$push[key] && update.$push[key].$each) {
+          mpath.set(key, [...update.$push[key].$each], obj);
+        } else {
+          mpath.set(key, [update.$push[key]], obj);
+        }
       }
     }
   }

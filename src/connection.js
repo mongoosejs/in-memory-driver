@@ -41,4 +41,8 @@ module.exports = class Connection extends MongooseConnection {
     }
     return this;
   }
+
+  async dropDatabase() {
+    this.collections = {};
+  }
 };

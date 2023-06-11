@@ -38,6 +38,14 @@ describe('in-memory driver', function() {
     assert.equal(docs.length, 2);
     assert.equal(docs[0].name, 'test2');
     assert.equal(docs[1].name, 'test');
+
+    docs = await Test.find({}).sort({ name: -1 }).limit(1);
+    assert.equal(docs.length, 1);
+    assert.equal(docs[0].name, 'test2');
+
+    docs = await Test.find({}).sort({ name: -1 }).skip(1);
+    assert.equal(docs.length, 1);
+    assert.equal(docs[0].name, 'test');
   });
 
   it('find cursor', async function() {
@@ -116,6 +124,50 @@ describe('in-memory driver', function() {
       assert.strictEqual(doc.age, 29);
     });
 
+  });
+
+  it('deleteOne', async function() {
+    const Test = mongoose.model('Test', mongoose.Schema({
+      name: String,
+      priority: Number
+    }));
+
+    await Test.create([
+      { name: 'foo' },
+      { name: 'bar', priority: 0 },
+      { name: 'bar', priority: 1 },
+      { name: 'bar', priority: 2 }
+    ]);
+
+    await Test.deleteOne({ name: 'foo' });
+    let remaining = await Test.find().then(docs => docs.map(doc => ({
+      name: doc.name,
+      priority: doc.priority
+    })));
+    assert.deepStrictEqual(remaining, [
+      { name: 'bar', priority: 0 },
+      { name: 'bar', priority: 1 },
+      { name: 'bar', priority: 2 }
+    ]);
+
+    await Test.deleteOne({ name: 'bar' }, { sort: { priority: -1 } });
+    remaining = await Test.find().then(docs => docs.map(doc => ({
+      name: doc.name,
+      priority: doc.priority
+    })));
+    assert.deepStrictEqual(remaining, [
+      { name: 'bar', priority: 0 },
+      { name: 'bar', priority: 1 }
+    ]);
+
+    await Test.deleteOne({ name: 'bar' }, { sort: { priority: 1 } });
+    remaining = await Test.find().then(docs => docs.map(doc => ({
+      name: doc.name,
+      priority: doc.priority
+    })));
+    assert.deepStrictEqual(remaining, [
+      { name: 'bar', priority: 1 }
+    ]);
   });
 
   it('updateOne', async function() {
@@ -337,8 +389,8 @@ describe('in-memory driver', function() {
           age: total
         });
       }
-      let docs = aggregate.call(Test.collection, [{ $sort: { num: 1 } }]);
-      docs = aggregate.call(Test.collection, [{ $sort: { num: -1 } }]);
+      const docs = aggregate.call(Test.collection, [{ $sort: { num: -1 } }]);
+      assert.deepStrictEqual(docs.map(doc => doc.num), [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
     });
     it('supports $unwind', async function() {
       const Test = mongoose.model('Test', mongoose.Schema({

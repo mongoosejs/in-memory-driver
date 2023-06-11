@@ -2,9 +2,9 @@
 
 const Cursor = require('./cursor');
 const MongooseCollection = require('mongoose/lib/collection');
+const { ObjectId } = require('bson');
 const applyProjectionToDoc = require('./mongodb/applyProjectionToDoc');
 const applyUpdate = require('./mongodb/applyUpdate');
-const compareValues = require('./mongodb/compareValues');
 const sift = require('sift').default;
 const sort = require('./mongodb/sort');
 const toBSON = require('./mongodb/toBSON');
@@ -33,12 +33,18 @@ module.exports = class Collection extends MongooseCollection {
   }
 
   find(query, options, cb) {
-    const result = query == null ?
+    let result = query == null ?
       [...this._documents] :
       this._documents.filter(sift(query));
 
     if (options && options.sort) {
       result.sort(sort(options.sort));
+    }
+    if (options && options.skip) {
+      result = result.slice(options.skip);
+    }
+    if (options && options.limit) {
+      result = result.slice(0, options.limit);
     }
 
     const cursor = new Cursor(result);
@@ -79,6 +85,34 @@ module.exports = class Collection extends MongooseCollection {
     return result;
   }
 
+  async deleteOne(query, options, callback) {
+    const result = { deletedCount: 0 };
+    const filter = sift(query);
+
+    let docs = this._documents;
+    if (options && options.sort) {
+      docs = [...docs].sort(sort(options.sort));
+    }
+
+    let docToDelete = null;
+    for (let i = 0; i < docs.length; ++i) {
+      if (filter(docs[i])) {
+        docToDelete = docs[i];
+        break;
+      }
+    }
+    if (docToDelete != null) {
+      this._documents.splice(this._documents.indexOf(docToDelete), 1);
+      result.deletedCount = 1;
+    }
+
+    if (callback) {
+      callback(null, result);
+    }
+
+    return result;
+  }
+
   async findOneAndUpdate(query, update, options) {
     let doc = this._documents.find(sift(query));
     const result = { value: null };
@@ -87,7 +121,7 @@ module.exports = class Collection extends MongooseCollection {
       result.value = doc;
       applyUpdate(doc, update);
     } else if (options && options.upsert) {
-      doc = { ...query };
+      doc = { _id: new ObjectId(), ...query };
       applyUpdate(doc, update);
       this._documents.push(doc);
       result.value = doc;
