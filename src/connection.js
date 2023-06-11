@@ -15,22 +15,19 @@ module.exports = class Connection extends MongooseConnection {
     return super.collection(name, options);
   }
 
-  createCollection(name, options, callback) {
+  createCollection(name, options) {
     this.collection(name, options);
-    callback(null);
   }
 
-  async dropCollection(name, callback) {
+  async dropCollection(name) {
     delete this.collections[name];
-    callback(null);
   }
 
-  openUri(uri, options, callback) {
+  openUri(uri, options) {
     if (!allowedUris.find(allowedUri => uri.startsWith(allowedUri))) {
-      return callback(new Error('Connection failed'));
+      throw new Error('Connection failed');
     }
     this.readyState = 1;
-    callback && callback(null, this);
     return Promise.resolve(this);
   }
 
